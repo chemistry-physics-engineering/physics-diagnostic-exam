@@ -88,7 +88,11 @@ button.quiet { color: var(--muted); }
 .frac > span { padding: 0 3px; }
 .frac > span:first-child { border-bottom: 1.5px solid currentColor; }
 .rad { white-space: nowrap; }
-.rad > span { border-top: 1.5px solid currentColor; padding: 0 2px; margin-left: 1px; }
+.rad > span { display: inline-block; border-top: 1.5px solid currentColor; padding: .12em 2px 0; margin-left: 1px; line-height: 1.25; }
+.math sup { line-height: 0; }
+.mj { display: inline-flex; align-items: center; font-size: 1.2rem; }
+.mj mjx-container { margin: 0 !important; }
+.vecprev { display: inline-flex; align-items: center; gap: 2px; font-family: var(--f-math); font-size: 1.2rem; }
 .math sup { font-size: .7em; }
 .msg { min-height: 1.4em; margin: 6px 0 10px; }
 .msg.warn { color: var(--warn); }
@@ -122,6 +126,9 @@ textarea.copybox { width: 100%; height: 8em; font-family: var(--f-mono); font-si
 </style>
 </head>
 <body>
+
+<script>window.MathJax = { startup: { typeset: false }, svg: { fontCache: 'local' } };</script>
+<script async src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-svg.js"></script>
 
 <div id="app"></div>
 
@@ -565,6 +572,46 @@ var PhysDiag = (function () {
     }
     return R(n);
   }
+  // TeX for MathJax previews (the HTML renderAst above is the fallback when MathJax has not loaded).
+  var TEXVAR = { theta: '\\theta', mu: '\\mu', rho: '\\rho', lambda: '\\lambda', omega: '\\omega', phi: '\\phi', dT: '\\Delta T' };
+  function renderTex(n, units) {
+    function strip(x) { return x.k === 'par' ? strip(x.a) : x; }
+    function simple(x) { return x.k === 'num' || x.k === 'var' || x.k === 'pi' || x.k === 'e'; }
+    function lead(x) { x = strip(x); if (x.k === 'num' || x.k === 'neg') { return true; } if (x.k === 'mul' || x.k === 'pow') { return lead(x.a); } return false; }
+    function wrap(h) { return /\\frac|\\sqrt/.test(h) ? '\\left(' + h + '\\right)' : '(' + h + ')'; }
+    function V(name) {
+      if (units) { return '\\mathrm{' + name + '}'; }
+      if (TEXVAR[name]) { return TEXVAR[name]; }
+      var m = /^([A-Za-z])([A-Za-z0-9]+)$/.exec(name);
+      return m ? m[1] + '_{' + m[2] + '}' : name;
+    }
+    function T(x) {
+      var s, a, b;
+      switch (x.k) {
+        case 'num': return String(x.v);
+        case 'var': return V(x.v);
+        case 'pi': return '\\pi ';
+        case 'e': return 'e';
+        case 'par': s = strip(x.a); return (s.k === 'div' || s.k === 'fn' || simple(s)) ? T(s) : wrap(T(s));
+        case 'neg': s = strip(x.a); return '-' + (s.k === 'add' || s.k === 'neg' ? wrap(T(s)) : T(s));
+        case 'add': s = strip(x.b); return T(x.a) + (x.op === '+' ? ' + ' : ' - ') + (s.k === 'add' || s.k === 'neg' ? wrap(T(s)) : T(s));
+        case 'mul':
+          a = strip(x.a); b = strip(x.b);
+          return (a.k === 'add' ? wrap(T(a)) : T(a)) + (lead(b) ? ' \\cdot ' : (units ? '\\,' : ' ')) + (b.k === 'add' || b.k === 'neg' ? wrap(T(b)) : T(b));
+        case 'div': return '\\frac{' + T(strip(x.a)) + '}{' + T(strip(x.b)) + '}';
+        case 'pow':
+          s = strip(x.a); b = strip(x.b);
+          var ex = b.k === 'div' ? T(strip(b.a)) + '/' + T(strip(b.b)) : T(b);
+          return (simple(s) ? '{' + T(s) + '}' : wrap(T(s))) + '^{' + ex + '}';
+        case 'fn':
+          if (x.f === 'sqrt') { return '\\sqrt{' + T(strip(x.a)) + '}'; }
+          if (x.f === 'exp') { return 'e^{' + T(strip(x.a)) + '}'; }
+          return '\\' + x.f + wrap(T(strip(x.a)));
+      }
+      return '';
+    }
+    return T(n);
+  }
 
   // Seeded sample points so a given answer always grades the same way.
   function lcg(seed) { var s = seed >>> 0; return function () { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; return s / 4294967296; }; }
@@ -766,7 +813,7 @@ var PhysDiag = (function () {
 
   return { CHAPTERS: CHAPTERS, ITEMS: ITEMS, SETTINGS: SETTINGS, STATUS: STATUS, BANDS: BANDS, TAGS: TAGS,
            create: create, readNumber: readNumber, gradeNum: gradeNum, gradeSym: gradeSym, grade: grade, fmt: fmt, makeId: makeId,
-           parseExpr: parseExpr, evalAst: evalAst, renderAst: renderAst, showVar: showVar, samplePoints: samplePoints, diagnose: diagnose };
+           parseExpr: parseExpr, evalAst: evalAst, renderAst: renderAst, renderTex: renderTex, showVar: showVar, samplePoints: samplePoints, diagnose: diagnose };
 })();
 if (typeof module === 'object' && module.exports) { module.exports = PhysDiag; }
 </script>
@@ -819,12 +866,25 @@ if (typeof module === 'object' && module.exports) { module.exports = PhysDiag; }
     box.appendChild(el('span', { class: 'lead', text: 'We read your answer as:' }));
     box.appendChild(el('span', { class: 'val', text: P.fmt(r.value) }));
   }
+  // Typeset an expression with MathJax (SVG) when it has loaded; otherwise use the plain HTML rendering.
+  function mathNode(ast, units) {
+    var mj = window.MathJax;
+    if (mj && typeof mj.tex2svg === 'function') {
+      try {
+        if (!mathNode.styled && typeof mj.svgStylesheet === 'function') { document.head.appendChild(mj.svgStylesheet()); mathNode.styled = true; }
+        var span = el('span', { class: 'mj' });
+        span.appendChild(mj.tex2svg('\\displaystyle ' + P.renderTex(ast, units), { display: false }));
+        return span;
+      } catch (e) { /* fall through to HTML */ }
+    }
+    return el('span', { class: 'math' + (units ? ' units' : ''), html: P.renderAst(ast) });
+  }
   function previewSym(box, raw, vars, units) {
     clear(box);
     var r = P.parseExpr(raw, vars);
     if (r.error) { box.appendChild(el('span', { class: 'lead', text: r.error })); return; }
     box.appendChild(el('span', { class: 'lead', text: 'We read your answer as:' }));
-    box.appendChild(el('span', { class: 'math' + (units ? ' units' : ''), html: P.renderAst(r.ast) }));
+    box.appendChild(mathNode(r.ast, units));
   }
   function insertAt(input, text, back) {
     var v = input.value;
@@ -1085,7 +1145,7 @@ if (typeof module === 'object' && module.exports) { module.exports = PhysDiag; }
   function keyNode(item) {
     if (item.type === 'mc') { return el('span', { text: item.opts[0] }); }
     if (item.type === 'num') { return el('span', { class: 'mono', text: P.fmt(item.ans) + (item.unit ? ' ' + item.unit : '') }); }
-    return el('span', { class: 'math' + (item.type === 'unit' ? ' units' : ''), html: P.renderAst(P.parseExpr(item.key, item.vars).ast) });
+    return mathNode(P.parseExpr(item.key, item.vars).ast, item.type === 'unit');
   }
 
   function showViewer() {
