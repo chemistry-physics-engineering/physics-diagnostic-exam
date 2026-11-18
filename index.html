@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Physics Placement Diagnostic</title>
+<title>Algebra-Based Physics Placement Diagnostic</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=Source+Sans+3:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
@@ -136,7 +136,7 @@ var PhysDiag = (function () {
     [10, 'Heat and Temperature'], [11, 'Waves and Sound'], [12, 'Light and Optics'], [13, 'Electric Charge and Field'],
     [14, 'Circuits'], [15, 'Magnetism and Induction'], [16, 'Modern and Nuclear Physics']
   ];
-  var SETTINGS = { title: 'Physics Placement Diagnostic', seconds_per_item: 180, max_items: 75, tolerance: 0.01,
+  var SETTINGS = { title: 'Algebra-Based Physics Placement Diagnostic', seconds_per_item: 180, max_items: 75, tolerance: 0.01,
                    sym_every: 3, email_to: 'textbookbreakdown@gmail.com', subject_tag: '[PHYS-ALG-DIAG]', skool_dm_url: 'https://www.skool.com/chat' };
 
   function mc(ch, rung, v, q, right, wrong) { return { ch: ch, rung: rung, v: v, type: 'mc', q: q, opts: [right].concat(wrong) }; }
