@@ -1081,6 +1081,7 @@ if (typeof module === 'object' && module.exports) { module.exports = PhysDiag; }
     var box = el('textarea', { class: 'copybox', readonly: 'readonly', 'aria-label': 'Your results' });
     box.value = json;
     var copied = el('span', { class: 'small', 'aria-live': 'polite' });
+    var fallback = el('p', { class: 'small', hidden: 'hidden', 'aria-live': 'polite', text: 'Didn\'t work? Send it to ' + S.email_to });
     app.appendChild(el('div', { class: 'card' },
       el('p', { class: 'eyebrow', text: 'Finished' }),
       el('h1', { text: 'Send your results' }),
@@ -1093,8 +1094,9 @@ if (typeof module === 'object' && module.exports) { module.exports = PhysDiag; }
             navigator.clipboard.writeText(json).then(function () { copied.textContent = 'Copied.'; }, function () { copied.textContent = 'Press Ctrl+C (or Cmd+C) to copy.'; });
           } else { copied.textContent = 'Press Ctrl+C (or Cmd+C) to copy.'; }
         } }),
-        el('a', { class: 'btn', href: gmail, target: '_blank', rel: 'noopener', text: 'Email Ken' }),
-        copied)));
+        el('a', { class: 'btn', href: gmail, target: '_blank', rel: 'noopener', text: 'Email Ken', onclick: function () { fallback.hidden = false; } }),
+        copied),
+      fallback));
     window.scrollTo(0, 0);
   }
 
