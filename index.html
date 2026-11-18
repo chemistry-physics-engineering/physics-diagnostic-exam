@@ -928,9 +928,10 @@ if (typeof module === 'object' && module.exports) { module.exports = PhysDiag; }
     app.appendChild(el('div', { class: 'card' },
       el('h1', { text: S.title }),
       el('ul', { class: 'rules' },
-        el('li', { text: 'Use only pencil and paper. No calculator, AI, internet or books.' }),
-        el('li', { text: 'You have 3 minutes per question. If you are stuck, press "I don\'t know".' }),
-        el('li', { text: 'At the end, copy your results and send them to Ken.' }))),
+        el('li', { text: 'Use pencil and paper. No calculator, AI, internet or books.' }),
+        el('li', { text: 'You have 3 minutes per question.' }),
+        el('li', { text: 'If you are stuck, press "I don\'t know".' }),
+        el('li', { text: 'At the end, copy your results and send them to the email.' }))),
     );
     app.appendChild(el('div', { class: 'card' },
       el('label', { for: 'demo', style: 'margin-top:0', text: 'Try typing numbers before the exam.' }),
