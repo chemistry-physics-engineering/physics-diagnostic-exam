@@ -83,6 +83,7 @@ button.quiet { color: var(--muted); }
 .keys button.op { font-family: var(--f-mono); font-size: .9rem; color: var(--muted); }
 .math { font-family: var(--f-math); font-size: 1.2rem; line-height: 1.2; }
 .math i { font-style: italic; }
+.math.units i { font-style: normal; }
 .frac { display: inline-flex; flex-direction: column; vertical-align: middle; text-align: center; margin: 0 2px; }
 .frac > span { padding: 0 3px; }
 .frac > span:first-child { border-bottom: 1.5px solid currentColor; }
@@ -130,10 +131,10 @@ var PhysDiag = (function () {
   'use strict';
 
   var CHAPTERS = [
-    [1, 'Math and Units'], [2, 'Motion in One Dimension'], [3, 'Vectors and Projectiles'], [4, 'Newton\'s Laws'],
-    [5, 'Work, Energy and Power'], [6, 'Momentum'], [7, 'Circular Motion and Gravity'], [8, 'Fluids and Pressure'],
-    [9, 'Heat and Temperature'], [10, 'Waves and Sound'], [11, 'Light and Optics'], [12, 'Electric Charge and Field'],
-    [13, 'Circuits'], [14, 'Magnetism and Induction'], [15, 'Modern and Nuclear Physics']
+    [1, 'Math Skills'], [2, 'Unit Calculations'], [3, 'Motion in One Dimension'], [4, 'Vectors and Projectiles'], [5, 'Newton\'s Laws'],
+    [6, 'Work, Energy and Power'], [7, 'Momentum'], [8, 'Circular Motion and Gravity'], [9, 'Fluids and Pressure'],
+    [10, 'Heat and Temperature'], [11, 'Waves and Sound'], [12, 'Light and Optics'], [13, 'Electric Charge and Field'],
+    [14, 'Circuits'], [15, 'Magnetism and Induction'], [16, 'Modern and Nuclear Physics']
   ];
   var SETTINGS = { title: 'Physics Placement Diagnostic', seconds_per_item: 180, max_items: 75, tolerance: 0.01,
                    sym_every: 3, email_to: 'textbookbreakdown@gmail.com', subject_tag: '[PHYS-ALG-DIAG]', skool_dm_url: 'https://www.skool.com/chat' };
@@ -141,203 +142,219 @@ var PhysDiag = (function () {
   function mc(ch, rung, v, q, right, wrong) { return { ch: ch, rung: rung, v: v, type: 'mc', q: q, opts: [right].concat(wrong) }; }
   function num(ch, rung, v, q, ans, unit) { return { ch: ch, rung: rung, v: v, type: 'num', q: q, ans: ans, unit: unit || '' }; }
   function sym(ch, rung, q, lhs, vars, key, ranges) { return { ch: ch, rung: rung, v: 'S', type: 'sym', q: q, lhs: lhs, vars: vars, key: key, ranges: ranges || {} }; }
+  // A units answer: the student types units (kg m/s^2, J, N/m^2 ...); graded by dimensions, so any equivalent form counts.
+  var UNIT_VARS = ['kg', 'm', 's', 'A', 'K', 'N', 'J', 'W', 'Pa', 'C', 'V', 'Hz'];
+  function unit(ch, rung, q, lhs, key) { return { ch: ch, rung: rung, v: 'U', type: 'unit', q: q, lhs: lhs, vars: UNIT_VARS, keys: ['kg', 'm', 's', 'N', 'J'], key: key, ranges: {} }; }
   var G = 10;
 
   var ITEMS = [
-    // ==== 1 Math and Units
-    mc(1, 1, 'A', 'Which of these is the SI base unit of mass?', 'kilogram', ['gram', 'newton', 'pound']),
+    // ==== 1 Math Skills
+    mc(1, 1, 'A', 'Which of these equals 5 × 10⁻³?', '0.005', ['0.0005', '0.05', '5000']),
     mc(1, 1, 'B', 'How is 3.2 × 10⁴ written as an ordinary number?', '32,000', ['3,200', '320,000', '0.00032']),
-    num(1, 2, 'A', 'Convert 2.5 km to metres.', 2.5 * 1000, 'm'),
-    num(1, 2, 'B', 'Convert 450 g to kilograms.', 450 / 1000, 'kg'),
+    num(1, 2, 'A', 'Solve 3x + 5 = 20 for x.', (20 - 5) / 3, ''),
+    num(1, 2, 'B', 'A right triangle has legs of 5 and 12. How long is the hypotenuse?', Math.sqrt(5 * 5 + 12 * 12), ''),
     sym(1, 2, 'Solve d = v·t for t.', 't', ['d', 'v'], 'd/v'),
-    num(1, 3, 'A', 'Convert 72 km/h to metres per second.', 72 * 1000 / 3600, 'm/s'),
+    num(1, 3, 'A', 'In a right triangle, sin θ = 0.6. What is cos θ?', Math.sqrt(1 - 0.6 * 0.6), ''),
     num(1, 3, 'B', 'Work out (4 × 10⁶) × (3 × 10⁻²) ÷ (2 × 10³).', 4e6 * 3e-2 / 2e3, ''),
     sym(1, 3, 'Solve x = ½·a·t² for t.', 't', ['x', 'a'], 'sqrt(2*x/a)'),
-    num(1, 4, 'A', 'A floor has an area of 3 m². What is its area in cm²? (You can type an answer like 2e4.)', 3 * 100 * 100, 'cm²'),
+    num(1, 4, 'A', 'y = k/x². When x is doubled, by what factor is y multiplied? (You can type a fraction like 1/3.)', 1 / 4, ''),
     num(1, 4, 'B', 'The radius of a circle is tripled. By what factor does its area increase?', 9, 'times'),
     sym(1, 4, 'The period of a pendulum is T = 2π√(L/g). Solve for g.', 'g', ['T', 'L'], '4*pi^2*L/T^2'),
 
-    // ==== 2 Motion in One Dimension
-    mc(2, 1, 'A', 'Which of these is a vector quantity?', 'Displacement', ['Distance', 'Speed', 'Time']),
-    mc(2, 1, 'B', 'An object moves with constant velocity. What is its acceleration?', 'Zero', ['Equal to its velocity', '9.8 m/s²', 'Increasing steadily']),
-    num(2, 2, 'A', 'A car travels 150 m in 6 s at a constant speed. What is its speed?', 150 / 6, 'm/s'),
-    num(2, 2, 'B', 'A bicycle speeds up from 4 m/s to 16 m/s in 3 s. What is its acceleration?', (16 - 4) / 3, 'm/s²'),
-    sym(2, 2, 'Solve v = v₀ + a·t for a.', 'a', ['v', 'v0', 't'], '(v-v0)/t'),
-    num(2, 3, 'A', 'A car starts from rest and accelerates uniformly at 3 m/s² for 8 s. How far does it travel in that time?', 0.5 * 3 * 8 * 8, 'm'),
-    num(2, 3, 'B', 'A stone is dropped from rest from the top of a building and hits the ground 3 s later. Take g = 10 m/s². How tall is the building?', 0.5 * G * 3 * 3, 'm'),
-    sym(2, 3, 'An object starts from rest and speeds up with constant acceleration a. How fast is it moving after it has travelled a distance d?', 'v', ['a', 'd'], 'sqrt(2*a*d)'),
-    num(2, 4, 'A', 'A train moving at 20 m/s brakes with a uniform deceleration and stops after travelling 100 m. How long does it take to stop?', 20 / ((20 * 20) / (2 * 100)), 's'),
-    num(2, 4, 'B', 'A ball is thrown straight up at 30 m/s and caught again at the same height. Take g = 10 m/s². What total distance does the ball travel?', 2 * (30 * 30) / (2 * G), 'm'),
-    sym(2, 4, 'A rock is thrown straight down at speed v₀ from the top of a cliff of height h. Ignore air resistance and use g for the acceleration due to gravity. How fast is it moving when it hits the ground?', 'v', ['v0', 'h', 'g'], 'sqrt(v0^2+2*g*h)'),
+    // ==== 2 Unit Calculations
+    mc(2, 1, 'A', 'Which of these is the same as 1 newton?', '1 kg·m/s²', ['1 kg·m/s', '1 kg·m²/s²', '1 kg/(m·s²)']),
+    mc(2, 1, 'B', 'One pascal, the unit of pressure, is the same as:', '1 N/m²', ['1 N·m', '1 N/m', '1 J/s']),
+    num(2, 2, 'A', 'Convert 54 km/h to metres per second.', 54 * 1000 / 3600, 'm/s'),
+    num(2, 2, 'B', 'Convert 450 g to kilograms.', 450 / 1000, 'kg'),
+    unit(2, 2, 'Force is mass × acceleration. What is the SI unit of force, written in base units (kg, m, s)?', 'unit of F', 'kg*m/s^2'),
+    num(2, 3, 'A', 'Convert a density of 2.7 g/cm³ to kg/m³.', 2.7 * 1000, 'kg/m³'),
+    num(2, 3, 'B', 'Convert 1 kWh to joules. (You can type an answer like 2e6.)', 1000 * 3600, 'J'),
+    unit(2, 3, 'Kinetic energy is ½mv². What are its SI units, written in base units?', 'unit of E', 'kg*m^2/s^2'),
+    num(2, 4, 'A', 'A floor has an area of 3 m². What is its area in cm²? (You can type an answer like 2e4.)', 3 * 100 * 100, 'cm²'),
+    num(2, 4, 'B', 'A tap delivers 3 litres every second. How many cubic metres is that per hour? (1 m³ = 1000 L)', 3 * 3600 / 1000, 'm³/h'),
+    unit(2, 4, 'In F = G·m₁·m₂/r², what are the SI units of G, written in base units?', 'unit of G', 'm^3/(kg*s^2)'),
 
-    // ==== 3 Vectors and Projectiles
-    mc(3, 1, 'A', 'A ball rolls off a table. Ignoring air resistance, what happens to its horizontal velocity while it falls?', 'It stays the same', ['It increases', 'It decreases', 'It drops to zero']),
-    mc(3, 1, 'B', 'Forces of 3 N and 4 N act on an object at right angles to each other. How big is their resultant?', '5 N', ['7 N', '1 N', '12 N']),
-    num(3, 2, 'A', 'A person walks 6 m east and then 8 m north. How big is their displacement?', Math.sqrt(6 * 6 + 8 * 8), 'm'),
-    num(3, 2, 'B', 'A velocity of 20 m/s points 30° above the horizontal. Use sin 30° = 0.5. What is its vertical component?', 20 * 0.5, 'm/s'),
-    sym(3, 2, 'A velocity of size v points at angle θ above the horizontal. What is its horizontal component?', 'vₓ', ['v', 'theta'], 'v*cos(theta)'),
-    num(3, 3, 'A', 'A ball rolls off a table 0.8 m high. Take g = 10 m/s². How long does it take to reach the floor?', Math.sqrt(2 * 0.8 / G), 's'),
-    num(3, 3, 'B', 'A stone is thrown horizontally at 15 m/s from the top of a cliff 20 m high. Take g = 10 m/s². How far from the base of the cliff does it land?', 15 * Math.sqrt(2 * 20 / G), 'm'),
-    sym(3, 3, 'A ball is thrown horizontally at speed u from a height h. Ignore air resistance and use g. How far does it travel horizontally before it hits the ground?', 'x', ['u', 'h', 'g'], 'u*sqrt(2*h/g)'),
-    num(3, 4, 'A', 'A ball is kicked at 20 m/s at 30° above level ground. Use sin 30° = 0.5 and g = 10 m/s². How long is it in the air?', 2 * 20 * 0.5 / G, 's'),
-    num(3, 4, 'B', 'A ball is launched at 50 m/s at 37° above level ground. Use sin 37° = 0.6, cos 37° = 0.8 and g = 10 m/s². How far away does it land?', (50 * 0.8) * (2 * 50 * 0.6 / G), 'm'),
-    sym(3, 4, 'A ball is launched from level ground at speed v and angle θ above the horizontal. Ignore air resistance and use g. What is the greatest height it reaches?', 'H', ['v', 'theta', 'g'], '(v*sin(theta))^2/(2*g)'),
+    // ==== 3 Motion in One Dimension
+    mc(3, 1, 'A', 'Which of these is a vector quantity?', 'Displacement', ['Distance', 'Speed', 'Time']),
+    mc(3, 1, 'B', 'An object moves with constant velocity. What is its acceleration?', 'Zero', ['Equal to its velocity', '9.8 m/s²', 'Increasing steadily']),
+    num(3, 2, 'A', 'A car travels 150 m in 6 s at a constant speed. What is its speed?', 150 / 6, 'm/s'),
+    num(3, 2, 'B', 'A bicycle speeds up from 4 m/s to 16 m/s in 3 s. What is its acceleration?', (16 - 4) / 3, 'm/s²'),
+    sym(3, 2, 'Solve v = v₀ + a·t for a.', 'a', ['v', 'v0', 't'], '(v-v0)/t'),
+    num(3, 3, 'A', 'A car starts from rest and accelerates uniformly at 3 m/s² for 8 s. How far does it travel in that time?', 0.5 * 3 * 8 * 8, 'm'),
+    num(3, 3, 'B', 'A stone is dropped from rest from the top of a building and hits the ground 3 s later. Take g = 10 m/s². How tall is the building?', 0.5 * G * 3 * 3, 'm'),
+    sym(3, 3, 'An object starts from rest and speeds up with constant acceleration a. How fast is it moving after it has travelled a distance d?', 'v', ['a', 'd'], 'sqrt(2*a*d)'),
+    num(3, 4, 'A', 'A train moving at 20 m/s brakes with a uniform deceleration and stops after travelling 100 m. How long does it take to stop?', 20 / ((20 * 20) / (2 * 100)), 's'),
+    num(3, 4, 'B', 'A ball is thrown straight up at 30 m/s and caught again at the same height. Take g = 10 m/s². What total distance does the ball travel?', 2 * (30 * 30) / (2 * G), 'm'),
+    sym(3, 4, 'A rock is thrown straight down at speed v₀ from the top of a cliff of height h. Ignore air resistance and use g for the acceleration due to gravity. How fast is it moving when it hits the ground?', 'v', ['v0', 'h', 'g'], 'sqrt(v0^2+2*g*h)'),
 
-    // ==== 4 Newton's Laws
-    mc(4, 1, 'A', 'The tendency of an object to stay at rest, or to keep moving in a straight line at constant speed, is called:', 'Inertia', ['Momentum', 'Friction', 'Impulse']),
-    mc(4, 1, 'B', 'A book rests on a table. By Newton\'s third law, what is the reaction to the Earth pulling down on the book?', 'The book pulling up on the Earth', ['The table pushing up on the book', 'Friction between the book and the table', 'The weight of the table']),
-    num(4, 2, 'A', 'A net force of 20 N acts on a 4 kg mass. What is its acceleration?', 20 / 4, 'm/s²'),
-    num(4, 2, 'B', 'What is the weight of a 6 kg mass? Take g = 10 m/s².', 6 * G, 'N'),
-    sym(4, 2, 'Solve F = m·a for m.', 'm', ['F', 'a'], 'F/a'),
-    num(4, 3, 'A', 'A 2000 kg car moving at 15 m/s is brought to rest in 5 s. What is the size of the average braking force?', 2000 * (15 / 5), 'N'),
-    num(4, 3, 'B', 'A 10 kg box on a level floor is pulled by a horizontal force of 50 N. The friction force on it is 20 N. What is its acceleration?', (50 - 20) / 10, 'm/s²'),
-    sym(4, 3, 'A box of mass m is pulled across a level floor by a horizontal force F. The coefficient of kinetic friction is μ. Use g. What is the box\'s acceleration?', 'a', ['F', 'm', 'mu', 'g'], '(F-mu*m*g)/m'),
-    num(4, 4, 'A', 'Blocks of 3 kg and 2 kg sit side by side, touching, on a frictionless floor. A 20 N horizontal force pushes the 3 kg block, which pushes the 2 kg block. What force does the 3 kg block exert on the 2 kg block?', 2 * (20 / (3 + 2)), 'N'),
-    num(4, 4, 'B', 'A 60 kg person stands on a scale in an elevator (lift) that is accelerating upward at 2 m/s². Take g = 10 m/s². What does the scale read?', 60 * (G + 2), 'N'),
-    sym(4, 4, 'Masses m₁ and m₂ (m₂ is heavier) hang on either side of a light rope over a frictionless pulley. Use g. What is the size of their acceleration?', 'a', ['m1', 'm2', 'g'], '(m2-m1)*g/(m1+m2)'),
+    // ==== 4 Vectors and Projectiles
+    mc(4, 1, 'A', 'A ball rolls off a table. Ignoring air resistance, what happens to its horizontal velocity while it falls?', 'It stays the same', ['It increases', 'It decreases', 'It drops to zero']),
+    mc(4, 1, 'B', 'Forces of 3 N and 4 N act on an object at right angles to each other. How big is their resultant?', '5 N', ['7 N', '1 N', '12 N']),
+    num(4, 2, 'A', 'A person walks 6 m east and then 8 m north. How big is their displacement?', Math.sqrt(6 * 6 + 8 * 8), 'm'),
+    num(4, 2, 'B', 'A velocity of 20 m/s points 30° above the horizontal. Use sin 30° = 0.5. What is its vertical component?', 20 * 0.5, 'm/s'),
+    sym(4, 2, 'A velocity of size v points at angle θ above the horizontal. What is its horizontal component?', 'vₓ', ['v', 'theta'], 'v*cos(theta)'),
+    num(4, 3, 'A', 'A ball rolls off a table 0.8 m high. Take g = 10 m/s². How long does it take to reach the floor?', Math.sqrt(2 * 0.8 / G), 's'),
+    num(4, 3, 'B', 'A stone is thrown horizontally at 15 m/s from the top of a cliff 20 m high. Take g = 10 m/s². How far from the base of the cliff does it land?', 15 * Math.sqrt(2 * 20 / G), 'm'),
+    sym(4, 3, 'A ball is thrown horizontally at speed u from a height h. Ignore air resistance and use g. How far does it travel horizontally before it hits the ground?', 'x', ['u', 'h', 'g'], 'u*sqrt(2*h/g)'),
+    num(4, 4, 'A', 'A ball is kicked at 20 m/s at 30° above level ground. Use sin 30° = 0.5 and g = 10 m/s². How long is it in the air?', 2 * 20 * 0.5 / G, 's'),
+    num(4, 4, 'B', 'A ball is launched at 50 m/s at 37° above level ground. Use sin 37° = 0.6, cos 37° = 0.8 and g = 10 m/s². How far away does it land?', (50 * 0.8) * (2 * 50 * 0.6 / G), 'm'),
+    sym(4, 4, 'A ball is launched from level ground at speed v and angle θ above the horizontal. Ignore air resistance and use g. What is the greatest height it reaches?', 'H', ['v', 'theta', 'g'], '(v*sin(theta))^2/(2*g)'),
 
-    // ==== 5 Work, Energy and Power
-    mc(5, 1, 'A', 'What is the SI unit of power?', 'Watt', ['Joule', 'Newton', 'Pascal']),
-    mc(5, 1, 'B', 'As a ball falls freely, its gravitational potential energy changes mainly into:', 'Kinetic energy', ['Heat energy', 'Sound energy', 'Chemical energy']),
-    num(5, 2, 'A', 'A force of 25 N moves a box 4 m in the direction of the force. How much work is done?', 25 * 4, 'J'),
-    num(5, 2, 'B', 'What is the kinetic energy of a 2 kg ball moving at 6 m/s?', 0.5 * 2 * 6 * 6, 'J'),
-    sym(5, 2, 'Solve P = W/t for W.', 'W', ['P', 't'], 'P*t'),
-    num(5, 3, 'A', 'A 50 kg student climbs stairs 6 m high in 10 s. Take g = 10 m/s². What is the student\'s power?', (50 * G * 6) / 10, 'W'),
-    num(5, 3, 'B', 'A 2 kg stone is dropped from a height of 20 m. Ignore air resistance and take g = 10 m/s². How fast is it moving just before it hits the ground?', Math.sqrt(2 * G * 20), 'm/s'),
-    sym(5, 3, 'Solve E = ½·m·v² for v.', 'v', ['E', 'm'], 'sqrt(2*E/m)'),
-    num(5, 4, 'A', 'A motor with an efficiency of 80% lifts a 40 kg load through 10 m in 20 s. Take g = 10 m/s². What is the input power of the motor?', ((40 * G * 10) / 20) / 0.8, 'W'),
-    num(5, 4, 'B', 'A 2 kg block slides from rest down a frictionless ramp, dropping 5 m in height. It then slides across a rough floor where the friction force is 4 N. Take g = 10 m/s². How far does it slide along the floor before stopping?', (2 * G * 5) / 4, 'm'),
-    sym(5, 4, 'A block of mass m is released from rest at height h on a frictionless ramp. At the bottom it runs into a spring with spring constant k. Use g. How far is the spring compressed when the block stops?', 'x', ['m', 'h', 'k', 'g'], 'sqrt(2*m*g*h/k)'),
+    // ==== 5 Newton's Laws
+    mc(5, 1, 'A', 'The tendency of an object to stay at rest, or to keep moving in a straight line at constant speed, is called:', 'Inertia', ['Momentum', 'Friction', 'Impulse']),
+    mc(5, 1, 'B', 'A book rests on a table. By Newton\'s third law, what is the reaction to the Earth pulling down on the book?', 'The book pulling up on the Earth', ['The table pushing up on the book', 'Friction between the book and the table', 'The weight of the table']),
+    num(5, 2, 'A', 'A net force of 20 N acts on a 4 kg mass. What is its acceleration?', 20 / 4, 'm/s²'),
+    num(5, 2, 'B', 'What is the weight of a 6 kg mass? Take g = 10 m/s².', 6 * G, 'N'),
+    sym(5, 2, 'Solve F = m·a for m.', 'm', ['F', 'a'], 'F/a'),
+    num(5, 3, 'A', 'A 2000 kg car moving at 15 m/s is brought to rest in 5 s. What is the size of the average braking force?', 2000 * (15 / 5), 'N'),
+    num(5, 3, 'B', 'A 10 kg box on a level floor is pulled by a horizontal force of 50 N. The friction force on it is 20 N. What is its acceleration?', (50 - 20) / 10, 'm/s²'),
+    sym(5, 3, 'A box of mass m is pulled across a level floor by a horizontal force F. The coefficient of kinetic friction is μ. Use g. What is the box\'s acceleration?', 'a', ['F', 'm', 'mu', 'g'], '(F-mu*m*g)/m'),
+    num(5, 4, 'A', 'Blocks of 3 kg and 2 kg sit side by side, touching, on a frictionless floor. A 20 N horizontal force pushes the 3 kg block, which pushes the 2 kg block. What force does the 3 kg block exert on the 2 kg block?', 2 * (20 / (3 + 2)), 'N'),
+    num(5, 4, 'B', 'A 60 kg person stands on a scale in an elevator (lift) that is accelerating upward at 2 m/s². Take g = 10 m/s². What does the scale read?', 60 * (G + 2), 'N'),
+    sym(5, 4, 'Masses m₁ and m₂ (m₂ is heavier) hang on either side of a light rope over a frictionless pulley. Use g. What is the size of their acceleration?', 'a', ['m1', 'm2', 'g'], '(m2-m1)*g/(m1+m2)'),
 
-    // ==== 6 Momentum
-    mc(6, 1, 'A', 'Momentum is equal to:', 'mass × velocity', ['mass × acceleration', 'force × distance', '½ × mass × velocity²']),
-    mc(6, 1, 'B', 'Two carts collide with no outside forces acting. Which of these is always the same before and after the collision?', 'The total momentum', ['The total kinetic energy', 'The speed of each cart', 'The velocity of each cart']),
-    num(6, 2, 'A', 'What is the momentum of a 1500 kg car moving at 20 m/s?', 1500 * 20, 'kg·m/s'),
-    num(6, 2, 'B', 'A 0.5 kg ball at rest is kicked and leaves at 20 m/s. What impulse did the kick give it?', 0.5 * 20, 'N·s'),
-    sym(6, 2, 'A steady force F acts for a time t on an object of mass m that starts at rest. How fast is it moving at the end?', 'v', ['F', 't', 'm'], 'F*t/m'),
-    num(6, 3, 'A', 'A 4 kg gun fires a 0.05 kg bullet at 400 m/s. With what speed does the gun recoil?', (0.05 * 400) / 4, 'm/s'),
-    num(6, 3, 'B', 'A 0.2 kg ball hits a wall at 10 m/s and bounces straight back at 10 m/s. It touches the wall for 0.1 s. What is the size of the average force on the ball?', 0.2 * (10 + 10) / 0.1, 'N'),
-    sym(6, 3, 'A bullet of mass m moving at speed v hits a block of mass M at rest and sticks in it. How fast does the block move just after?', 'V', ['m', 'v', 'M'], 'm*v/(m+M)'),
-    num(6, 4, 'A', 'A 3 kg trolley moving east at 4 m/s collides head-on with a 1 kg trolley moving west at 4 m/s. They stick together. What is their speed just after the collision?', (3 * 4 - 1 * 4) / (3 + 1), 'm/s'),
-    num(6, 4, 'B', 'A 1 kg ball moving at 6 m/s hits a 2 kg ball at rest. Afterward, the 1 kg ball bounces straight back at 2 m/s. How fast does the 2 kg ball move?', (1 * 6 + 1 * 2) / 2, 'm/s'),
-    sym(6, 4, 'A bullet of mass m is fired into a block of mass M that hangs from strings. The bullet sticks, and the block swings up to a height h. Use g. How fast was the bullet moving?', 'v', ['m', 'M', 'h', 'g'], '(m+M)/m*sqrt(2*g*h)'),
+    // ==== 6 Work, Energy and Power
+    mc(6, 1, 'A', 'What is the SI unit of power?', 'Watt', ['Joule', 'Newton', 'Pascal']),
+    mc(6, 1, 'B', 'As a ball falls freely, its gravitational potential energy changes mainly into:', 'Kinetic energy', ['Heat energy', 'Sound energy', 'Chemical energy']),
+    num(6, 2, 'A', 'A force of 25 N moves a box 4 m in the direction of the force. How much work is done?', 25 * 4, 'J'),
+    num(6, 2, 'B', 'What is the kinetic energy of a 2 kg ball moving at 6 m/s?', 0.5 * 2 * 6 * 6, 'J'),
+    sym(6, 2, 'Solve P = W/t for W.', 'W', ['P', 't'], 'P*t'),
+    num(6, 3, 'A', 'A 50 kg student climbs stairs 6 m high in 10 s. Take g = 10 m/s². What is the student\'s power?', (50 * G * 6) / 10, 'W'),
+    num(6, 3, 'B', 'A 2 kg stone is dropped from a height of 20 m. Ignore air resistance and take g = 10 m/s². How fast is it moving just before it hits the ground?', Math.sqrt(2 * G * 20), 'm/s'),
+    sym(6, 3, 'Solve E = ½·m·v² for v.', 'v', ['E', 'm'], 'sqrt(2*E/m)'),
+    num(6, 4, 'A', 'A motor with an efficiency of 80% lifts a 40 kg load through 10 m in 20 s. Take g = 10 m/s². What is the input power of the motor?', ((40 * G * 10) / 20) / 0.8, 'W'),
+    num(6, 4, 'B', 'A 2 kg block slides from rest down a frictionless ramp, dropping 5 m in height. It then slides across a rough floor where the friction force is 4 N. Take g = 10 m/s². How far does it slide along the floor before stopping?', (2 * G * 5) / 4, 'm'),
+    sym(6, 4, 'A block of mass m is released from rest at height h on a frictionless ramp. At the bottom it runs into a spring with spring constant k. Use g. How far is the spring compressed when the block stops?', 'x', ['m', 'h', 'k', 'g'], 'sqrt(2*m*g*h/k)'),
 
-    // ==== 7 Circular Motion and Gravity
-    mc(7, 1, 'A', 'An object moves in a circle at constant speed. Which way does its acceleration point?', 'Toward the centre of the circle', ['Away from the centre', 'Forward, along its motion', 'It has no acceleration']),
-    mc(7, 1, 'B', 'The distance between two masses is doubled. The gravitational force between them becomes:', 'One quarter as big', ['Half as big', 'Twice as big', 'Four times as big']),
-    num(7, 2, 'A', 'A car drives around a circle of radius 50 m at 10 m/s. What is its centripetal acceleration?', 10 * 10 / 50, 'm/s²'),
-    num(7, 2, 'B', 'An object goes around a circle 4 times in 2 s. What is its period?', 2 / 4, 's'),
-    sym(7, 2, 'Solve a = v²/r for v.', 'v', ['a', 'r'], 'sqrt(a*r)'),
-    num(7, 3, 'A', 'A 1000 kg car takes a level curve of radius 40 m at 20 m/s. How much sideways friction force does it need?', 1000 * 20 * 20 / 40, 'N'),
-    num(7, 3, 'B', 'A 0.5 kg ball on a 2 m string is swung in a horizontal circle at 4 m/s. Ignoring gravity, what is the tension in the string?', 0.5 * 4 * 4 / 2, 'N'),
-    sym(7, 3, 'A satellite moves in a circular orbit of radius r around a planet of mass M. Use G for the gravitational constant. What is its orbital speed?', 'v', ['G', 'M', 'r'], 'sqrt(G*M/r)'),
-    num(7, 4, 'A', 'A ball on a string swings in a vertical circle of radius 0.4 m. Take g = 10 m/s². What is the slowest speed it can have at the top and still keep the string tight?', Math.sqrt(G * 0.4), 'm/s'),
-    num(7, 4, 'B', 'A planet has twice the mass of Earth and twice its radius. Take g = 10 m/s² on Earth. What is g at the planet\'s surface?', G * 2 / (2 * 2), 'm/s²'),
-    sym(7, 4, 'A satellite moves in a circular orbit of radius r around a planet of mass M. Use G and π. How long does one orbit take?', 'T', ['G', 'M', 'r'], '2*pi*sqrt(r^3/(G*M))'),
+    // ==== 7 Momentum
+    mc(7, 1, 'A', 'Momentum is equal to:', 'mass × velocity', ['mass × acceleration', 'force × distance', '½ × mass × velocity²']),
+    mc(7, 1, 'B', 'Two carts collide with no outside forces acting. Which of these is always the same before and after the collision?', 'The total momentum', ['The total kinetic energy', 'The speed of each cart', 'The velocity of each cart']),
+    num(7, 2, 'A', 'What is the momentum of a 1500 kg car moving at 20 m/s?', 1500 * 20, 'kg·m/s'),
+    num(7, 2, 'B', 'A 0.5 kg ball at rest is kicked and leaves at 20 m/s. What impulse did the kick give it?', 0.5 * 20, 'N·s'),
+    sym(7, 2, 'A steady force F acts for a time t on an object of mass m that starts at rest. How fast is it moving at the end?', 'v', ['F', 't', 'm'], 'F*t/m'),
+    num(7, 3, 'A', 'A 4 kg gun fires a 0.05 kg bullet at 400 m/s. With what speed does the gun recoil?', (0.05 * 400) / 4, 'm/s'),
+    num(7, 3, 'B', 'A 0.2 kg ball hits a wall at 10 m/s and bounces straight back at 10 m/s. It touches the wall for 0.1 s. What is the size of the average force on the ball?', 0.2 * (10 + 10) / 0.1, 'N'),
+    sym(7, 3, 'A bullet of mass m moving at speed v hits a block of mass M at rest and sticks in it. How fast does the block move just after?', 'V', ['m', 'v', 'M'], 'm*v/(m+M)'),
+    num(7, 4, 'A', 'A 3 kg trolley moving east at 4 m/s collides head-on with a 1 kg trolley moving west at 4 m/s. They stick together. What is their speed just after the collision?', (3 * 4 - 1 * 4) / (3 + 1), 'm/s'),
+    num(7, 4, 'B', 'A 1 kg ball moving at 6 m/s hits a 2 kg ball at rest. Afterward, the 1 kg ball bounces straight back at 2 m/s. How fast does the 2 kg ball move?', (1 * 6 + 1 * 2) / 2, 'm/s'),
+    sym(7, 4, 'A bullet of mass m is fired into a block of mass M that hangs from strings. The bullet sticks, and the block swings up to a height h. Use g. How fast was the bullet moving?', 'v', ['m', 'M', 'h', 'g'], '(m+M)/m*sqrt(2*g*h)'),
 
-    // ==== 8 Fluids and Pressure
-    mc(8, 1, 'A', 'Pressure is defined as:', 'Force per unit area', ['Force multiplied by area', 'Mass per unit volume', 'Weight multiplied by height']),
-    mc(8, 1, 'B', 'A block of wood floats at rest in water. The buoyant force on it is:', 'Equal to its weight', ['Greater than its weight', 'Less than its weight', 'Zero']),
-    num(8, 2, 'A', 'A force of 600 N acts evenly on an area of 3 m². What is the pressure?', 600 / 3, 'Pa'),
-    num(8, 2, 'B', 'A 400 g block has a volume of 50 cm³. What is its density?', 400 / 50, 'g/cm³'),
-    sym(8, 2, 'Solve ρ = m/V for V.', 'V', ['rho', 'm'], 'm/rho'),
-    num(8, 3, 'A', 'What is the pressure due to water at a depth of 5 m? Take the density of water as 1000 kg/m³ and g = 10 m/s².', 5 * 1000 * G, 'Pa'),
-    num(8, 3, 'B', 'In a hydraulic press, the small piston has an area of 10 cm² and the large piston an area of 500 cm². A force of 40 N is applied to the small piston. What force acts on the large piston?', 40 * (500 / 10), 'N'),
-    sym(8, 3, 'In a hydraulic press, the small piston has area a and the large piston has area A. A force f pushes on the small piston. What force acts on the large piston?', 'F', ['f', 'a', 'A'], 'f*A/a'),
-    num(8, 4, 'A', 'A block of wood floats in water with 60% of its volume under the surface. The density of water is 1000 kg/m³. What is the density of the wood?', 0.6 * 1000, 'kg/m³'),
-    num(8, 4, 'B', 'A piece of metal weighs 30 N in air and 20 N when fully under water. Take the density of water as 1000 kg/m³ and g = 10 m/s². What is the density of the metal?', (30 / G) / ((30 - 20) / (1000 * G)), 'kg/m³'),
-    sym(8, 4, 'An object weighs W in air and w when it is fully under water. The density of water is ρ. What is the density of the object?', 'ρₒ', ['W', 'w', 'rho'], 'W*rho/(W-w)', { W: [3, 5], w: [0.5, 2] }),
+    // ==== 8 Circular Motion and Gravity
+    mc(8, 1, 'A', 'An object moves in a circle at constant speed. Which way does its acceleration point?', 'Toward the centre of the circle', ['Away from the centre', 'Forward, along its motion', 'It has no acceleration']),
+    mc(8, 1, 'B', 'The distance between two masses is doubled. The gravitational force between them becomes:', 'One quarter as big', ['Half as big', 'Twice as big', 'Four times as big']),
+    num(8, 2, 'A', 'A car drives around a circle of radius 50 m at 10 m/s. What is its centripetal acceleration?', 10 * 10 / 50, 'm/s²'),
+    num(8, 2, 'B', 'An object goes around a circle 4 times in 2 s. What is its period?', 2 / 4, 's'),
+    sym(8, 2, 'Solve a = v²/r for v.', 'v', ['a', 'r'], 'sqrt(a*r)'),
+    num(8, 3, 'A', 'A 1000 kg car takes a level curve of radius 40 m at 20 m/s. How much sideways friction force does it need?', 1000 * 20 * 20 / 40, 'N'),
+    num(8, 3, 'B', 'A 0.5 kg ball on a 2 m string is swung in a horizontal circle at 4 m/s. Ignoring gravity, what is the tension in the string?', 0.5 * 4 * 4 / 2, 'N'),
+    sym(8, 3, 'A satellite moves in a circular orbit of radius r around a planet of mass M. Use G for the gravitational constant. What is its orbital speed?', 'v', ['G', 'M', 'r'], 'sqrt(G*M/r)'),
+    num(8, 4, 'A', 'A ball on a string swings in a vertical circle of radius 0.4 m. Take g = 10 m/s². What is the slowest speed it can have at the top and still keep the string tight?', Math.sqrt(G * 0.4), 'm/s'),
+    num(8, 4, 'B', 'A planet has twice the mass of Earth and twice its radius. Take g = 10 m/s² on Earth. What is g at the planet\'s surface?', G * 2 / (2 * 2), 'm/s²'),
+    sym(8, 4, 'A satellite moves in a circular orbit of radius r around a planet of mass M. Use G and π. How long does one orbit take?', 'T', ['G', 'M', 'r'], '2*pi*sqrt(r^3/(G*M))'),
 
-    // ==== 9 Heat and Temperature
-    mc(9, 1, 'A', 'At normal atmospheric pressure, pure water boils at:', '100 °C', ['0 °C', '273 °C', '37 °C']),
-    mc(9, 1, 'B', 'While ice is melting into water, its temperature:', 'Stays the same', ['Rises steadily', 'Falls steadily', 'Rises and then falls']),
-    num(9, 2, 'A', 'Convert 27 °C to the Kelvin scale.', 27 + 273, 'K'),
-    num(9, 2, 'B', 'Convert 50 °C to the Fahrenheit scale.', 50 * 9 / 5 + 32, '°F'),
-    sym(9, 2, 'Solve Q = m·c·ΔT for c.', 'c', ['Q', 'm', 'dT'], 'Q/(m*dT)'),
-    num(9, 3, 'A', 'How much heat is needed to warm 2 kg of water from 20 °C to 70 °C? The specific heat of water is 4200 J/(kg·K).', 2 * 4200 * (70 - 20), 'J'),
-    num(9, 3, 'B', 'An iron rod is 2 m long at 20 °C. It is heated to 120 °C. The linear expansion coefficient of iron is 1.2 × 10⁻⁵ K⁻¹. By how much does the rod get longer?', 2 * 1.2e-5 * (120 - 20) * 1000, 'mm'),
-    sym(9, 3, 'A mass m₁ of water at temperature T₁ is mixed with a mass m₂ of water at temperature T₂. No heat is lost. What is the final temperature?', 'T', ['m1', 'T1', 'm2', 'T2'], '(m1*T1+m2*T2)/(m1+m2)'),
-    num(9, 4, 'A', 'How much heat is needed to turn 0.5 kg of ice at 0 °C into water at 20 °C? The latent heat of fusion of ice is 336000 J/kg and the specific heat of water is 4200 J/(kg·K).', 0.5 * 336000 + 0.5 * 4200 * 20, 'J'),
-    num(9, 4, 'B', '200 g of water at 80 °C is mixed with 300 g of water at 30 °C. No heat is lost to the surroundings. What is the final temperature of the mixture?', (200 * 80 + 300 * 30) / (200 + 300), '°C'),
-    sym(9, 4, 'Ice of mass m at 0 °C is dropped into a mass M of water at temperature T (in °C). All the ice melts and no heat is lost. The latent heat of fusion is L and the specific heat of water is c. What is the final temperature in °C?', 'T_f', ['m', 'M', 'T', 'L', 'c'], '(M*c*T-m*L)/((m+M)*c)'),
+    // ==== 9 Fluids and Pressure
+    mc(9, 1, 'A', 'Pressure is defined as:', 'Force per unit area', ['Force multiplied by area', 'Mass per unit volume', 'Weight multiplied by height']),
+    mc(9, 1, 'B', 'A block of wood floats at rest in water. The buoyant force on it is:', 'Equal to its weight', ['Greater than its weight', 'Less than its weight', 'Zero']),
+    num(9, 2, 'A', 'A force of 600 N acts evenly on an area of 3 m². What is the pressure?', 600 / 3, 'Pa'),
+    num(9, 2, 'B', 'A 400 g block has a volume of 50 cm³. What is its density?', 400 / 50, 'g/cm³'),
+    sym(9, 2, 'Solve ρ = m/V for V.', 'V', ['rho', 'm'], 'm/rho'),
+    num(9, 3, 'A', 'What is the pressure due to water at a depth of 5 m? Take the density of water as 1000 kg/m³ and g = 10 m/s².', 5 * 1000 * G, 'Pa'),
+    num(9, 3, 'B', 'In a hydraulic press, the small piston has an area of 10 cm² and the large piston an area of 500 cm². A force of 40 N is applied to the small piston. What force acts on the large piston?', 40 * (500 / 10), 'N'),
+    sym(9, 3, 'In a hydraulic press, the small piston has area a and the large piston has area A. A force f pushes on the small piston. What force acts on the large piston?', 'F', ['f', 'a', 'A'], 'f*A/a'),
+    num(9, 4, 'A', 'A block of wood floats in water with 60% of its volume under the surface. The density of water is 1000 kg/m³. What is the density of the wood?', 0.6 * 1000, 'kg/m³'),
+    num(9, 4, 'B', 'A piece of metal weighs 30 N in air and 20 N when fully under water. Take the density of water as 1000 kg/m³ and g = 10 m/s². What is the density of the metal?', (30 / G) / ((30 - 20) / (1000 * G)), 'kg/m³'),
+    sym(9, 4, 'An object weighs W in air and w when it is fully under water. The density of water is ρ. What is the density of the object?', 'ρₒ', ['W', 'w', 'rho'], 'W*rho/(W-w)', { W: [3, 5], w: [0.5, 2] }),
 
-    // ==== 10 Waves and Sound
-    mc(10, 1, 'A', 'Sound waves in air are:', 'Longitudinal waves', ['Transverse waves', 'Electromagnetic waves', 'Unable to travel through air']),
-    mc(10, 1, 'B', 'A wave keeps the same speed, but its frequency doubles. What happens to its wavelength?', 'It halves', ['It doubles', 'It stays the same', 'It becomes four times as long']),
-    num(10, 2, 'A', 'A wave has a frequency of 50 Hz and a wavelength of 4 m. What is its speed?', 50 * 4, 'm/s'),
-    num(10, 2, 'B', 'A vibrating source completes 20 vibrations in 4 s. What is its frequency?', 20 / 4, 'Hz'),
-    sym(10, 2, 'Solve v = f·λ for λ.', 'λ', ['v', 'f'], 'v/f'),
-    num(10, 3, 'A', 'A person shouts toward a cliff and hears the echo 2 s later. The speed of sound is 340 m/s. How far away is the cliff?', 340 * 2 / 2, 'm'),
-    num(10, 3, 'B', 'A sound of frequency 680 Hz travels through air at 340 m/s. What is its wavelength?', 340 / 680, 'm'),
-    sym(10, 3, 'A string of length L is fixed at both ends. Waves travel along it at speed v. What is the frequency of its lowest (fundamental) note?', 'f', ['v', 'L'], 'v/(2*L)'),
-    num(10, 4, 'A', 'A 500 Hz sound passes from air into water. Its speed is 340 m/s in air and 1500 m/s in water, and its frequency does not change. How much longer is its wavelength in water than in air?', 1500 / 500 - 340 / 500, 'm'),
-    num(10, 4, 'B', 'A string 0.5 m long is fixed at both ends and vibrates in its third harmonic (3 loops). Waves travel along it at 100 m/s. What is the frequency?', 3 * 100 / (2 * 0.5), 'Hz'),
-    sym(10, 4, 'The speed of waves on a string is v = √(T/μ), where T is the tension and μ is the mass per metre. The string has length L and is fixed at both ends. What is its fundamental frequency?', 'f', ['T', 'mu', 'L'], 'sqrt(T/mu)/(2*L)'),
+    // ==== 10 Heat and Temperature
+    mc(10, 1, 'A', 'At normal atmospheric pressure, pure water boils at:', '100 °C', ['0 °C', '273 °C', '37 °C']),
+    mc(10, 1, 'B', 'While ice is melting into water, its temperature:', 'Stays the same', ['Rises steadily', 'Falls steadily', 'Rises and then falls']),
+    num(10, 2, 'A', 'Convert 27 °C to the Kelvin scale.', 27 + 273, 'K'),
+    num(10, 2, 'B', 'Convert 50 °C to the Fahrenheit scale.', 50 * 9 / 5 + 32, '°F'),
+    sym(10, 2, 'Solve Q = m·c·ΔT for c.', 'c', ['Q', 'm', 'dT'], 'Q/(m*dT)'),
+    num(10, 3, 'A', 'How much heat is needed to warm 2 kg of water from 20 °C to 70 °C? The specific heat of water is 4200 J/(kg·K).', 2 * 4200 * (70 - 20), 'J'),
+    num(10, 3, 'B', 'An iron rod is 2 m long at 20 °C. It is heated to 120 °C. The linear expansion coefficient of iron is 1.2 × 10⁻⁵ K⁻¹. By how much does the rod get longer?', 2 * 1.2e-5 * (120 - 20) * 1000, 'mm'),
+    sym(10, 3, 'A mass m₁ of water at temperature T₁ is mixed with a mass m₂ of water at temperature T₂. No heat is lost. What is the final temperature?', 'T', ['m1', 'T1', 'm2', 'T2'], '(m1*T1+m2*T2)/(m1+m2)'),
+    num(10, 4, 'A', 'How much heat is needed to turn 0.5 kg of ice at 0 °C into water at 20 °C? The latent heat of fusion of ice is 336000 J/kg and the specific heat of water is 4200 J/(kg·K).', 0.5 * 336000 + 0.5 * 4200 * 20, 'J'),
+    num(10, 4, 'B', '200 g of water at 80 °C is mixed with 300 g of water at 30 °C. No heat is lost to the surroundings. What is the final temperature of the mixture?', (200 * 80 + 300 * 30) / (200 + 300), '°C'),
+    sym(10, 4, 'Ice of mass m at 0 °C is dropped into a mass M of water at temperature T (in °C). All the ice melts and no heat is lost. The latent heat of fusion is L and the specific heat of water is c. What is the final temperature in °C?', 'T_f', ['m', 'M', 'T', 'L', 'c'], '(M*c*T-m*L)/((m+M)*c)'),
 
-    // ==== 11 Light and Optics
-    mc(11, 1, 'A', 'By the law of reflection, the angle of reflection is:', 'Equal to the angle of incidence', ['Twice the angle of incidence', 'Half the angle of incidence', 'Always 90°']),
-    mc(11, 1, 'B', 'When light passes from air into glass at an angle, it bends:', 'Toward the normal', ['Away from the normal', 'Along the surface', 'Back into the air']),
-    num(11, 2, 'A', 'A ray of light strikes a plane mirror with an angle of incidence of 35°. What is the angle between the incident ray and the reflected ray?', 2 * 35, '°'),
-    num(11, 2, 'B', 'Light travels at 3 × 10⁸ m/s in vacuum and 2 × 10⁸ m/s in a glass. What is the refractive index of the glass?', 3e8 / 2e8, ''),
-    sym(11, 2, 'Solve n = c/v for v.', 'v', ['n', 'c'], 'c/n'),
-    num(11, 3, 'A', 'An object is placed 30 cm in front of a concave mirror of focal length 10 cm. How far from the mirror is the image formed?', 1 / (1 / 10 - 1 / 30), 'cm'),
-    num(11, 3, 'B', 'An object is placed 30 cm from a converging lens of focal length 20 cm. How far from the lens is the image formed?', 1 / (1 / 20 - 1 / 30), 'cm'),
-    sym(11, 3, 'Solve 1/f = 1/dₒ + 1/dᵢ for dᵢ.', 'dᵢ', ['f', 'do'], 'f*do/(do-f)', { 'do': [2, 4], f: [0.5, 1.5] }),
-    num(11, 4, 'A', 'An object 2 cm tall stands 15 cm in front of a concave mirror of focal length 10 cm. How tall is the image?', 2 * (1 / (1 / 10 - 1 / 15)) / 15, 'cm'),
-    num(11, 4, 'B', 'An object is placed 10 cm from a converging lens of focal length 15 cm. How far from the lens is the image?', Math.abs(1 / (1 / 15 - 1 / 10)), 'cm'),
-    sym(11, 4, 'A lens with focal length f forms an image of an object at distance dₒ. The magnification is M = −dᵢ/dₒ. Write M using only f and dₒ.', 'M', ['f', 'do'], 'f/(f-do)', { 'do': [2, 4], f: [0.5, 1.5] }),
+    // ==== 11 Waves and Sound
+    mc(11, 1, 'A', 'Sound waves in air are:', 'Longitudinal waves', ['Transverse waves', 'Electromagnetic waves', 'Unable to travel through air']),
+    mc(11, 1, 'B', 'A wave keeps the same speed, but its frequency doubles. What happens to its wavelength?', 'It halves', ['It doubles', 'It stays the same', 'It becomes four times as long']),
+    num(11, 2, 'A', 'A wave has a frequency of 50 Hz and a wavelength of 4 m. What is its speed?', 50 * 4, 'm/s'),
+    num(11, 2, 'B', 'A vibrating source completes 20 vibrations in 4 s. What is its frequency?', 20 / 4, 'Hz'),
+    sym(11, 2, 'Solve v = f·λ for λ.', 'λ', ['v', 'f'], 'v/f'),
+    num(11, 3, 'A', 'A person shouts toward a cliff and hears the echo 2 s later. The speed of sound is 340 m/s. How far away is the cliff?', 340 * 2 / 2, 'm'),
+    num(11, 3, 'B', 'A sound of frequency 680 Hz travels through air at 340 m/s. What is its wavelength?', 340 / 680, 'm'),
+    sym(11, 3, 'A string of length L is fixed at both ends. Waves travel along it at speed v. What is the frequency of its lowest (fundamental) note?', 'f', ['v', 'L'], 'v/(2*L)'),
+    num(11, 4, 'A', 'A 500 Hz sound passes from air into water. Its speed is 340 m/s in air and 1500 m/s in water, and its frequency does not change. How much longer is its wavelength in water than in air?', 1500 / 500 - 340 / 500, 'm'),
+    num(11, 4, 'B', 'A string 0.5 m long is fixed at both ends and vibrates in its third harmonic (3 loops). Waves travel along it at 100 m/s. What is the frequency?', 3 * 100 / (2 * 0.5), 'Hz'),
+    sym(11, 4, 'The speed of waves on a string is v = √(T/μ), where T is the tension and μ is the mass per metre. The string has length L and is fixed at both ends. What is its fundamental frequency?', 'f', ['T', 'mu', 'L'], 'sqrt(T/mu)/(2*L)'),
 
-    // ==== 12 Electric Charge and Field
-    mc(12, 1, 'A', 'Two negatively charged objects are brought close together. They will:', 'Repel each other', ['Attract each other', 'Have no force between them', 'Become neutral']),
-    mc(12, 1, 'B', 'A glass rod rubbed with silk becomes positively charged because it:', 'Loses electrons', ['Gains protons', 'Gains electrons', 'Loses protons']),
-    num(12, 2, 'A', 'The charge of one electron has size 1.6 × 10⁻¹⁹ C. How many electrons make up a charge of 1.6 × 10⁻¹⁸ C?', 1.6e-18 / 1.6e-19, 'electrons'),
-    num(12, 2, 'B', 'A charge of 2 C is moved through a potential difference of 12 V. How much work is done?', 2 * 12, 'J'),
-    sym(12, 2, 'Solve F = q·E for E.', 'E', ['F', 'q'], 'F/q'),
-    num(12, 3, 'A', 'Charges of 2 × 10⁻⁶ C and 3 × 10⁻⁶ C are 0.3 m apart. Take k = 9 × 10⁹ N·m²/C². What is the force between them?', 9e9 * 2e-6 * 3e-6 / (0.3 * 0.3), 'N'),
-    num(12, 3, 'B', 'What is the electric field 0.3 m from a point charge of 1 × 10⁻⁶ C? Take k = 9 × 10⁹ N·m²/C². (You can type an answer like 2e4.)', 9e9 * 1e-6 / (0.3 * 0.3), 'N/C'),
-    sym(12, 3, 'Solve F = k·q₁·q₂/r² for r.', 'r', ['k', 'q1', 'q2', 'F'], 'sqrt(k*q1*q2/F)'),
-    num(12, 4, 'A', 'The force between two point charges is 16 N. One charge is doubled and the distance between them is also doubled. What is the new force?', 16 * 2 / (2 * 2), 'N'),
-    num(12, 4, 'B', 'Charges of +4 µC and +1 µC are 0.3 m apart. At one point on the line between them the electric field is zero. How far is that point from the +4 µC charge?', 0.3 * 2 / (2 + 1), 'm'),
-    sym(12, 4, 'A particle with charge q and mass m starts at rest and is accelerated through a potential difference V. How fast is it moving at the end?', 'v', ['q', 'm', 'V'], 'sqrt(2*q*V/m)'),
+    // ==== 12 Light and Optics
+    mc(12, 1, 'A', 'By the law of reflection, the angle of reflection is:', 'Equal to the angle of incidence', ['Twice the angle of incidence', 'Half the angle of incidence', 'Always 90°']),
+    mc(12, 1, 'B', 'When light passes from air into glass at an angle, it bends:', 'Toward the normal', ['Away from the normal', 'Along the surface', 'Back into the air']),
+    num(12, 2, 'A', 'A ray of light strikes a plane mirror with an angle of incidence of 35°. What is the angle between the incident ray and the reflected ray?', 2 * 35, '°'),
+    num(12, 2, 'B', 'Light travels at 3 × 10⁸ m/s in vacuum and 2 × 10⁸ m/s in a glass. What is the refractive index of the glass?', 3e8 / 2e8, ''),
+    sym(12, 2, 'Solve n = c/v for v.', 'v', ['n', 'c'], 'c/n'),
+    num(12, 3, 'A', 'An object is placed 30 cm in front of a concave mirror of focal length 10 cm. How far from the mirror is the image formed?', 1 / (1 / 10 - 1 / 30), 'cm'),
+    num(12, 3, 'B', 'An object is placed 30 cm from a converging lens of focal length 20 cm. How far from the lens is the image formed?', 1 / (1 / 20 - 1 / 30), 'cm'),
+    sym(12, 3, 'Solve 1/f = 1/dₒ + 1/dᵢ for dᵢ.', 'dᵢ', ['f', 'do'], 'f*do/(do-f)', { 'do': [2, 4], f: [0.5, 1.5] }),
+    num(12, 4, 'A', 'An object 2 cm tall stands 15 cm in front of a concave mirror of focal length 10 cm. How tall is the image?', 2 * (1 / (1 / 10 - 1 / 15)) / 15, 'cm'),
+    num(12, 4, 'B', 'An object is placed 10 cm from a converging lens of focal length 15 cm. How far from the lens is the image?', Math.abs(1 / (1 / 15 - 1 / 10)), 'cm'),
+    sym(12, 4, 'A lens with focal length f forms an image of an object at distance dₒ. The magnification is M = −dᵢ/dₒ. Write M using only f and dₒ.', 'M', ['f', 'do'], 'f/(f-do)', { 'do': [2, 4], f: [0.5, 1.5] }),
 
-    // ==== 13 Circuits
-    mc(13, 1, 'A', 'What is the SI unit of resistance?', 'Ohm', ['Volt', 'Ampere', 'Watt']),
-    mc(13, 1, 'B', 'Two identical bulbs are connected in parallel to a battery. One bulb is unscrewed. What happens to the other bulb?', 'It stays just as bright', ['It goes out', 'It gets brighter', 'It gets dimmer']),
-    num(13, 2, 'A', 'A potential difference of 5 V is applied across a 10 Ω resistor. What current flows?', 5 / 10, 'A'),
-    num(13, 2, 'B', 'A 6 Ω resistor and a 3 Ω resistor are connected in series. What is the equivalent resistance?', 6 + 3, 'Ω'),
-    sym(13, 2, 'Solve P = V²/R for R.', 'R', ['P', 'V'], 'V^2/P'),
-    num(13, 3, 'A', 'A 6 Ω resistor and a 3 Ω resistor are connected in parallel. What is the equivalent resistance?', 1 / (1 / 6 + 1 / 3), 'Ω'),
-    num(13, 3, 'B', 'A 1000 W heater is used for 3 hours a day for 30 days. How much electrical energy does it use?', 1000 * 3 * 30 / 1000, 'kWh'),
-    sym(13, 3, 'Resistors R₁ and R₂ are connected in parallel. What is their equivalent resistance?', 'R', ['R1', 'R2'], 'R1*R2/(R1+R2)'),
-    num(13, 4, 'A', 'A 4 Ω resistor is connected in series with a parallel pair of 6 Ω and 12 Ω resistors. The circuit is connected to a 24 V battery. What current flows from the battery?', 24 / (4 + 1 / (1 / 6 + 1 / 12)), 'A'),
-    num(13, 4, 'B', 'A lamp is rated 100 W at 200 V. It is connected to a 100 V supply, and its resistance stays the same. What current flows through it?', 100 / ((200 * 200) / 100), 'A'),
-    sym(13, 4, 'A battery with emf E and internal resistance r is connected to an external resistor R. How much power is delivered to R?', 'P', ['E', 'r', 'R'], 'E^2*R/(R+r)^2'),
+    // ==== 13 Electric Charge and Field
+    mc(13, 1, 'A', 'Two negatively charged objects are brought close together. They will:', 'Repel each other', ['Attract each other', 'Have no force between them', 'Become neutral']),
+    mc(13, 1, 'B', 'A glass rod rubbed with silk becomes positively charged because it:', 'Loses electrons', ['Gains protons', 'Gains electrons', 'Loses protons']),
+    num(13, 2, 'A', 'The charge of one electron has size 1.6 × 10⁻¹⁹ C. How many electrons make up a charge of 1.6 × 10⁻¹⁸ C?', 1.6e-18 / 1.6e-19, 'electrons'),
+    num(13, 2, 'B', 'A charge of 2 C is moved through a potential difference of 12 V. How much work is done?', 2 * 12, 'J'),
+    sym(13, 2, 'Solve F = q·E for E.', 'E', ['F', 'q'], 'F/q'),
+    num(13, 3, 'A', 'Charges of 2 × 10⁻⁶ C and 3 × 10⁻⁶ C are 0.3 m apart. Take k = 9 × 10⁹ N·m²/C². What is the force between them?', 9e9 * 2e-6 * 3e-6 / (0.3 * 0.3), 'N'),
+    num(13, 3, 'B', 'What is the electric field 0.3 m from a point charge of 1 × 10⁻⁶ C? Take k = 9 × 10⁹ N·m²/C². (You can type an answer like 2e4.)', 9e9 * 1e-6 / (0.3 * 0.3), 'N/C'),
+    sym(13, 3, 'Solve F = k·q₁·q₂/r² for r.', 'r', ['k', 'q1', 'q2', 'F'], 'sqrt(k*q1*q2/F)'),
+    num(13, 4, 'A', 'The force between two point charges is 16 N. One charge is doubled and the distance between them is also doubled. What is the new force?', 16 * 2 / (2 * 2), 'N'),
+    num(13, 4, 'B', 'Charges of +4 µC and +1 µC are 0.3 m apart. At one point on the line between them the electric field is zero. How far is that point from the +4 µC charge?', 0.3 * 2 / (2 + 1), 'm'),
+    sym(13, 4, 'A particle with charge q and mass m starts at rest and is accelerated through a potential difference V. How fast is it moving at the end?', 'v', ['q', 'm', 'V'], 'sqrt(2*q*V/m)'),
 
-    // ==== 14 Magnetism and Induction
-    mc(14, 1, 'A', 'An electric motor changes:', 'Electrical energy into mechanical energy', ['Mechanical energy into electrical energy', 'Chemical energy into electrical energy', 'Heat energy into electrical energy']),
-    mc(14, 1, 'B', 'A transformer works only with:', 'Alternating current', ['Direct current', 'Both AC and DC equally', 'Static charge']),
-    num(14, 2, 'A', 'A transformer has 200 turns on its primary coil and 1000 turns on its secondary coil. The primary voltage is 22 V. What is the secondary voltage?', 22 * 1000 / 200, 'V'),
-    num(14, 2, 'B', 'A wire 0.5 m long carries a current of 4 A at right angles to a magnetic field of 0.2 T. What force acts on the wire?', 0.2 * 4 * 0.5, 'N'),
-    sym(14, 2, 'An ideal transformer obeys Vₛ/Vₚ = Nₛ/Nₚ. Solve for Nₛ.', 'Nₛ', ['Vs', 'Vp', 'Np'], 'Np*Vs/Vp'),
-    num(14, 3, 'A', 'An ideal transformer has 220 V and 2 A in its primary coil. Its secondary voltage is 11 V. What is the secondary current?', 220 * 2 / 11, 'A'),
-    num(14, 3, 'B', 'A transformer\'s primary coil has 1100 turns and is connected to 220 V. How many secondary turns are needed for a 6 V output?', 1100 * 6 / 220, 'turns'),
-    sym(14, 3, 'A particle with charge q and mass m moves at speed v at right angles to a magnetic field B. What is the radius of its circular path?', 'r', ['q', 'm', 'v', 'B'], 'm*v/(q*B)'),
-    num(14, 4, 'A', 'An ideal transformer steps 220 V down to 11 V and powers a 55 W bulb at full brightness. What current flows in the primary coil?', 55 / 220, 'A'),
-    num(14, 4, 'B', 'A transformer is 90% efficient. Its input power is 200 W and its secondary voltage is 20 V. What is the secondary current?', 0.9 * 200 / 20, 'A'),
-    sym(14, 4, 'A metal rod of length L slides at constant speed v along two rails, at right angles to a magnetic field B. The circuit has resistance R. What force is needed to keep the rod moving at constant speed?', 'F', ['L', 'v', 'B', 'R'], 'B^2*L^2*v/R'),
+    // ==== 14 Circuits
+    mc(14, 1, 'A', 'What is the SI unit of resistance?', 'Ohm', ['Volt', 'Ampere', 'Watt']),
+    mc(14, 1, 'B', 'Two identical bulbs are connected in parallel to a battery. One bulb is unscrewed. What happens to the other bulb?', 'It stays just as bright', ['It goes out', 'It gets brighter', 'It gets dimmer']),
+    num(14, 2, 'A', 'A potential difference of 5 V is applied across a 10 Ω resistor. What current flows?', 5 / 10, 'A'),
+    num(14, 2, 'B', 'A 6 Ω resistor and a 3 Ω resistor are connected in series. What is the equivalent resistance?', 6 + 3, 'Ω'),
+    sym(14, 2, 'Solve P = V²/R for R.', 'R', ['P', 'V'], 'V^2/P'),
+    num(14, 3, 'A', 'A 6 Ω resistor and a 3 Ω resistor are connected in parallel. What is the equivalent resistance?', 1 / (1 / 6 + 1 / 3), 'Ω'),
+    num(14, 3, 'B', 'A 1000 W heater is used for 3 hours a day for 30 days. How much electrical energy does it use?', 1000 * 3 * 30 / 1000, 'kWh'),
+    sym(14, 3, 'Resistors R₁ and R₂ are connected in parallel. What is their equivalent resistance?', 'R', ['R1', 'R2'], 'R1*R2/(R1+R2)'),
+    num(14, 4, 'A', 'A 4 Ω resistor is connected in series with a parallel pair of 6 Ω and 12 Ω resistors. The circuit is connected to a 24 V battery. What current flows from the battery?', 24 / (4 + 1 / (1 / 6 + 1 / 12)), 'A'),
+    num(14, 4, 'B', 'A lamp is rated 100 W at 200 V. It is connected to a 100 V supply, and its resistance stays the same. What current flows through it?', 100 / ((200 * 200) / 100), 'A'),
+    sym(14, 4, 'A battery with emf E and internal resistance r is connected to an external resistor R. How much power is delivered to R?', 'P', ['E', 'r', 'R'], 'E^2*R/(R+r)^2'),
 
-    // ==== 15 Modern and Nuclear Physics
-    mc(15, 1, 'A', 'Which radiation has the greatest penetrating power?', 'Gamma rays', ['Alpha particles', 'Beta particles', 'All three are the same']),
-    mc(15, 1, 'B', 'An alpha particle is:', 'A helium nucleus', ['An electron', 'A photon', 'A neutron']),
-    num(15, 2, 'A', 'A radioactive substance has a half-life of 5 days. What fraction of it is left after 10 days? (You can type a fraction like 1/8.)', Math.pow(0.5, 10 / 5), ''),
-    num(15, 2, 'B', 'A nucleus emits one beta-minus particle. By how much does its atomic number change? (Type a negative number for a decrease.)', 1, ''),
-    sym(15, 2, 'Solve E = m·c² for m.', 'm', ['E', 'c'], 'E/c^2'),
-    num(15, 3, 'A', 'Radium-226 (atomic number 88) emits an alpha particle. What is the mass number of the new nucleus?', 226 - 4, ''),
-    num(15, 3, 'B', 'A sample of 80 g of a radioactive substance has a half-life of 3 years. How much of it is left after 9 years?', 80 * Math.pow(0.5, 9 / 3), 'g'),
-    sym(15, 3, 'Light has wavelength λ. Use E = h·f and c = f·λ. What is the energy of one photon in terms of h, c and λ?', 'E', ['h', 'c', 'lambda'], 'h*c/lambda'),
-    num(15, 4, 'A', 'Uranium-238 (atomic number 92) decays in several steps to lead-206 (atomic number 82) by giving off alpha and beta-minus particles. How many beta particles are given off?', 2 * ((238 - 206) / 4) - (92 - 82), 'beta particles'),
-    num(15, 4, 'B', 'The activity of a radioactive source falls from 1600 counts per minute to 100 counts per minute in 20 hours. What is its half-life?', 20 / (Math.log(1600 / 100) / Math.log(2)), 'hours'),
-    sym(15, 4, 'A sample starts with N₀ radioactive nuclei and has a half-life T. How many nuclei have decayed (not how many are left) after a time t?', 'N_decayed', ['N0', 'T', 't'], 'N0*(1-(1/2)^(t/T))')
+    // ==== 15 Magnetism and Induction
+    mc(15, 1, 'A', 'An electric motor changes:', 'Electrical energy into mechanical energy', ['Mechanical energy into electrical energy', 'Chemical energy into electrical energy', 'Heat energy into electrical energy']),
+    mc(15, 1, 'B', 'A transformer works only with:', 'Alternating current', ['Direct current', 'Both AC and DC equally', 'Static charge']),
+    num(15, 2, 'A', 'A transformer has 200 turns on its primary coil and 1000 turns on its secondary coil. The primary voltage is 22 V. What is the secondary voltage?', 22 * 1000 / 200, 'V'),
+    num(15, 2, 'B', 'A wire 0.5 m long carries a current of 4 A at right angles to a magnetic field of 0.2 T. What force acts on the wire?', 0.2 * 4 * 0.5, 'N'),
+    sym(15, 2, 'An ideal transformer obeys Vₛ/Vₚ = Nₛ/Nₚ. Solve for Nₛ.', 'Nₛ', ['Vs', 'Vp', 'Np'], 'Np*Vs/Vp'),
+    num(15, 3, 'A', 'An ideal transformer has 220 V and 2 A in its primary coil. Its secondary voltage is 11 V. What is the secondary current?', 220 * 2 / 11, 'A'),
+    num(15, 3, 'B', 'A transformer\'s primary coil has 1100 turns and is connected to 220 V. How many secondary turns are needed for a 6 V output?', 1100 * 6 / 220, 'turns'),
+    sym(15, 3, 'A particle with charge q and mass m moves at speed v at right angles to a magnetic field B. What is the radius of its circular path?', 'r', ['q', 'm', 'v', 'B'], 'm*v/(q*B)'),
+    num(15, 4, 'A', 'An ideal transformer steps 220 V down to 11 V and powers a 55 W bulb at full brightness. What current flows in the primary coil?', 55 / 220, 'A'),
+    num(15, 4, 'B', 'A transformer is 90% efficient. Its input power is 200 W and its secondary voltage is 20 V. What is the secondary current?', 0.9 * 200 / 20, 'A'),
+    sym(15, 4, 'A metal rod of length L slides at constant speed v along two rails, at right angles to a magnetic field B. The circuit has resistance R. What force is needed to keep the rod moving at constant speed?', 'F', ['L', 'v', 'B', 'R'], 'B^2*L^2*v/R'),
+
+    // ==== 16 Modern and Nuclear Physics
+    mc(16, 1, 'A', 'Which radiation has the greatest penetrating power?', 'Gamma rays', ['Alpha particles', 'Beta particles', 'All three are the same']),
+    mc(16, 1, 'B', 'An alpha particle is:', 'A helium nucleus', ['An electron', 'A photon', 'A neutron']),
+    num(16, 2, 'A', 'A radioactive substance has a half-life of 5 days. What fraction of it is left after 10 days? (You can type a fraction like 1/8.)', Math.pow(0.5, 10 / 5), ''),
+    num(16, 2, 'B', 'A nucleus emits one beta-minus particle. By how much does its atomic number change? (Type a negative number for a decrease.)', 1, ''),
+    sym(16, 2, 'Solve E = m·c² for m.', 'm', ['E', 'c'], 'E/c^2'),
+    num(16, 3, 'A', 'Radium-226 (atomic number 88) emits an alpha particle. What is the mass number of the new nucleus?', 226 - 4, ''),
+    num(16, 3, 'B', 'A sample of 80 g of a radioactive substance has a half-life of 3 years. How much of it is left after 9 years?', 80 * Math.pow(0.5, 9 / 3), 'g'),
+    sym(16, 3, 'Light has wavelength λ. Use E = h·f and c = f·λ. What is the energy of one photon in terms of h, c and λ?', 'E', ['h', 'c', 'lambda'], 'h*c/lambda'),
+    num(16, 4, 'A', 'Uranium-238 (atomic number 92) decays in several steps to lead-206 (atomic number 82) by giving off alpha and beta-minus particles. How many beta particles are given off?', 2 * ((238 - 206) / 4) - (92 - 82), 'beta particles'),
+    num(16, 4, 'B', 'The activity of a radioactive source falls from 1600 counts per minute to 100 counts per minute in 20 hours. What is its half-life?', 20 / (Math.log(1600 / 100) / Math.log(2)), 'hours'),
+    sym(16, 4, 'A sample starts with N₀ radioactive nuclei and has a half-life T. How many nuclei have decayed (not how many are left) after a time t?', 'N_decayed', ['N0', 'T', 't'], 'N0*(1-(1/2)^(t/T))')
   ];
   ITEMS.forEach(function (it) { it.id = 'T' + (it.ch < 10 ? '0' : '') + it.ch + '-' + it.rung + it.v; });
 
@@ -561,6 +578,10 @@ var PhysDiag = (function () {
     for (var n = 0; n < 200 && pts.length < 8; n++) {
       var env = {};
       item.vars.forEach(function (v) { var r = item.ranges[v] || RANGES[v] || [0.5, 3]; env[v] = r[0] + rng() * (r[1] - r[0]); });
+      if (item.type === 'unit') {
+        env.N = env.kg * env.m / (env.s * env.s); env.J = env.N * env.m; env.W = env.J / env.s; env.Pa = env.N / (env.m * env.m);
+        env.C = env.A * env.s; env.V = env.W / env.A; env.Hz = 1 / env.s;
+      }
       var a = evalAst(key.ast, env);
       if (isFinite(a) && Math.abs(a) > 1e-9) { pts.push({ env: env, a: a }); }
     }
@@ -618,7 +639,11 @@ var PhysDiag = (function () {
     var finite = S.every(function (s) { return isFinite(s); });
     return { status: 'wrong', tag: finite ? diagnose(S, A, 1e-6, 'sym') : null };
   }
-  function grade(item, raw) { return item.type === 'sym' ? gradeSym(item, raw) : gradeNum(item, raw); }
+  function grade(item, raw) {
+    if (item.type === 'unit') { var g = gradeSym(item, raw); delete g.tag; return g; }
+    return item.type === 'sym' ? gradeSym(item, raw) : gradeNum(item, raw);
+  }
+  function fam(it) { return it.type === 'unit' ? 'num' : it.type; }
 
   // ---------------------------------------------------------- engine
   var STATUS = [
@@ -660,10 +685,14 @@ var PhysDiag = (function () {
           type = calc % SETTINGS.sym_every === 1 ? 'sym' : 'num';
         }
       }
-      var of = function (t, fresh) { return ITEMS.filter(function (it) { return it.ch === ch && it.rung === rung && it.type === t && (!fresh || !used[it.id]); }); };
+      var of = function (t, fresh) { return ITEMS.filter(function (it) { return it.ch === ch && it.rung === rung && fam(it) === t && (!fresh || !used[it.id]); }); };
       var pool = of(type, true);
       if (!pool.length && type === 'sym') { pool = of('num', true); }
       if (!pool.length) { pool = of(type === 'sym' ? 'num' : type, false); }
+      // Unit Calculations: exactly one type-the-units question per student, the rest are conversions.
+      var unitQs = pool.filter(function (it) { return it.type === 'unit'; });
+      if (unitQs.length && !asked.some(function (a) { return a.ch === ch && a.type === 'unit'; })) { pool = unitQs; }
+      else if (unitQs.length && pool.length > unitQs.length) { pool = pool.filter(function (it) { return it.type !== 'unit'; }); }
       return pool[Math.floor(random() * pool.length)];
     }
     function next() {
@@ -790,12 +819,12 @@ if (typeof module === 'object' && module.exports) { module.exports = PhysDiag; }
     box.appendChild(el('span', { class: 'lead', text: 'We read your answer as:' }));
     box.appendChild(el('span', { class: 'val', text: P.fmt(r.value) }));
   }
-  function previewSym(box, raw, vars) {
+  function previewSym(box, raw, vars, units) {
     clear(box);
     var r = P.parseExpr(raw, vars);
     if (r.error) { box.appendChild(el('span', { class: 'lead', text: r.error })); return; }
     box.appendChild(el('span', { class: 'lead', text: 'We read your answer as:' }));
-    box.appendChild(el('span', { class: 'math', html: P.renderAst(r.ast) }));
+    box.appendChild(el('span', { class: 'math' + (units ? ' units' : ''), html: P.renderAst(r.ast) }));
   }
   function insertAt(input, text, back) {
     var v = input.value;
@@ -806,11 +835,12 @@ if (typeof module === 'object' && module.exports) { module.exports = PhysDiag; }
     input.focus(); input.setSelectionRange(p, p);
     input.dispatchEvent(new Event('input'));
   }
-  function symKeys(input, vars) {
+  function symKeys(input, vars, units) {
     var b = vars.map(function (v) {
-      return el('button', { type: 'button', title: 'Type ' + v, onclick: function () { insertAt(input, v); } }, P.showVar(v));
+      return el('button', { type: 'button', title: 'Type ' + v, onclick: function () { insertAt(input, v + (units ? ' ' : '')); } }, P.showVar(v));
     });
-    var ops = [['√( )', 'sqrt()', 1], ['x²', '^2', 0], ['^', '^', 0], ['( )', '()', 1], ['π', 'pi', 0]];
+    var ops = units ? [['/', '/', 0], ['²', '^2', 0], ['³', '^3', 0], ['( )', '()', 1]]
+                    : [['√( )', 'sqrt()', 1], ['x²', '^2', 0], ['^', '^', 0], ['( )', '()', 1], ['π', 'pi', 0]];
     return el('div', { class: 'keys', 'aria-label': 'Insert letters and symbols' }, b,
       ops.map(function (o) { return el('button', { type: 'button', class: 'op', onclick: function () { insertAt(input, o[1], o[2]); } }, o[0]); }));
   }
@@ -836,9 +866,7 @@ if (typeof module === 'object' && module.exports) { module.exports = PhysDiag; }
     var err = el('div', { class: 'msg err' });
 
     app.appendChild(el('div', { class: 'card' },
-      el('p', { class: 'eyebrow', text: 'Algebra-based physics · Placement' }),
       el('h1', { text: S.title }),
-      el('p', { class: 'sub', text: '15 topics of algebra-based physics. It starts easy and gets harder as you go.' }),
       el('ul', { class: 'rules' },
         el('li', { text: 'Use only pencil and paper. No calculator, AI, internet or books.' }),
         el('li', { text: 'You have 3 minutes per question. If you are stuck, press "I don\'t know".' }),
@@ -901,18 +929,20 @@ if (typeof module === 'object' && module.exports) { module.exports = PhysDiag; }
       }));
       getTyped = function () { return cur.choice === null ? '' : item.opts[cur.choice]; };
     } else {
-      var isSym = item.type === 'sym';
+      var isUnit = item.type === 'unit', isSym = item.type === 'sym' || isUnit;
       var input = el('input', { type: 'text', id: 'ans', autocomplete: 'off', autocapitalize: 'off', spellcheck: 'false',
         'aria-label': isSym ? 'Your answer for ' + item.lhs : 'Your answer' + (item.unit ? ' in ' + item.unit : '') });
       var pv = el('div', { class: 'preview', 'aria-live': 'polite' });
-      var show = isSym ? function () { previewSym(pv, input.value, item.vars); } : function () { preview(pv, input.value); };
+      var show = isSym ? function () { previewSym(pv, input.value, item.vars, isUnit); } : function () { preview(pv, input.value); };
       input.addEventListener('input', function () { say(''); show(); });
       input.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); submit(); } });
       ['paste', 'drop'].forEach(function (ev) { input.addEventListener(ev, function (e) { e.preventDefault(); say('Pasting is turned off. Please type your answer.', 'warn'); }); });
       var row = isSym
         ? el('div', { class: 'answer-row' }, el('span', { class: 'unit lead-in', text: item.lhs + ' =' }), input)
         : el('div', { class: 'answer-row' }, input, item.unit ? el('span', { class: 'unit', text: item.unit }) : null);
-      body = el('div', null, isSym ? el('p', { class: 'hint', text: typingHint(item.vars) }) : null, row, isSym ? symKeys(input, item.vars) : null, pv);
+      var hint = isUnit ? 'Type the units, for example kg m/s^2. Letters next to each other are multiplied.' : (isSym ? typingHint(item.vars) : '');
+      body = el('div', null, isSym ? el('p', { class: 'hint', text: hint }) : null, row,
+        isSym ? symKeys(input, isUnit ? item.keys : item.vars, isUnit) : null, pv);
       show();
       getTyped = function () { return input.value.trim(); };
       cur.input = input;
@@ -972,7 +1002,7 @@ if (typeof module === 'object' && module.exports) { module.exports = PhysDiag; }
     var tags = {};
     sum.tags.forEach(function (t) { tags[t.key] = t.count; });
     return {
-      exam: 'PHYS-ALG-DIAG', version: 3, id: P.makeId(Date.now()), name: student.name,
+      exam: 'PHYS-ALG-DIAG', version: 4, id: P.makeId(Date.now()), name: student.name,
       date: new Date().toISOString().replace(/\.\d+Z$/, 'Z'),
       seconds: Math.round((Date.now() - examStart) / 1000), switches: blurs,
       band: sum.band.name, avg: Math.round(sum.mean * 100) / 100,
@@ -1055,7 +1085,7 @@ if (typeof module === 'object' && module.exports) { module.exports = PhysDiag; }
   function keyNode(item) {
     if (item.type === 'mc') { return el('span', { text: item.opts[0] }); }
     if (item.type === 'num') { return el('span', { class: 'mono', text: P.fmt(item.ans) + (item.unit ? ' ' + item.unit : '') }); }
-    return el('span', { class: 'math', html: P.renderAst(P.parseExpr(item.key, item.vars).ast) });
+    return el('span', { class: 'math' + (item.type === 'unit' ? ' units' : ''), html: P.renderAst(P.parseExpr(item.key, item.vars).ast) });
   }
 
   function showViewer() {
@@ -1090,7 +1120,7 @@ if (typeof module === 'object' && module.exports) { module.exports = PhysDiag; }
       if (!item) { return el('tr', null, el('td', { class: 'num', text: String(i + 1) }), el('td', { colspan: '6', text: 'Unknown question ' + r[0] })); }
       var res = RES[r[1]] || RES.s;
       return el('tr', null, el('td', { class: 'num', text: String(i + 1) }),
-        el('td', { class: 'small', text: item.id + (item.type === 'sym' ? ' (letters)' : '') }),
+        el('td', { class: 'small', text: item.id + (item.type === 'sym' ? ' (letters)' : item.type === 'unit' ? ' (units)' : '') }),
         el('td', { text: item.q }), el('td', { class: 'mono', text: r[3] || '—' }), el('td', null, keyNode(item)),
         el('td', null, chip(res[0], res[1]), r[4] && P.TAGS[r[4]] ? el('div', { style: 'margin-top:4px' }, chip('tag', P.TAGS[r[4]].name)) : null),
         el('td', { class: 'small num', text: r[2] + 's' }));
