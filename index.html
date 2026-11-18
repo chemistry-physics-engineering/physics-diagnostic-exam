@@ -940,8 +940,7 @@ if (typeof module === 'object' && module.exports) { module.exports = PhysDiag; }
       el('div', { class: 'answer-row' }, el('span', { class: 'unit lead-in', text: 'v =' }), symIn),
       symKeys(symIn, demoVars),
       symOut,
-      el('h2', { text: 'Before you begin' }),
-      el('label', { for: 'name', text: 'Your name' }), nameIn, err,
+      el('label', { for: 'name', style: 'margin-top:22px', text: 'Your name' }), nameIn, err,
       el('div', { class: 'row', style: 'margin-top:12px' }, el('button', { class: 'primary', text: 'Begin the exam', onclick: function () {
         var name = nameIn.value.trim();
         if (!name) { err.textContent = 'Please enter your name.'; nameIn.focus(); return; }
