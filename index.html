@@ -842,7 +842,7 @@ if (typeof module === 'object' && module.exports) { module.exports = PhysDiag; }
       el('ul', { class: 'rules' },
         el('li', { text: 'Use only pencil and paper. No calculator, AI, internet or books.' }),
         el('li', { text: 'You have 3 minutes per question. If you are stuck, press "I don\'t know".' }),
-        el('li', { text: 'At the end, press the button to email your results.' }))),
+        el('li', { text: 'At the end, copy your results and send them to Ken.' }))),
     );
     app.appendChild(el('div', { class: 'card' },
       el('h2', { text: 'How to type answers', style: 'margin-top:0' }),
@@ -871,7 +871,7 @@ if (typeof module === 'object' && module.exports) { module.exports = PhysDiag; }
   }
   function nextQuestion() {
     var item = engine.next();
-    if (!item) { examActive = false; showReport(); return; }
+    if (!item) { examActive = false; showDone(); return; }
     showQuestion(item, engine.count() + 1);
   }
 
@@ -963,137 +963,159 @@ if (typeof module === 'object' && module.exports) { module.exports = PhysDiag; }
     nextQuestion();
   }
 
-  // ------------------------------------------------------------ report
+  // ------------------------------------------------------------ student end screen: just the results JSON
+  var RCODE = { pass: 'p', fail: 'f', assumed: 'a', numonly: 'n', none: '-' };
+  var RNAME = { p: 'pass', f: 'fail', a: 'assumed', n: 'numonly', '-': 'none' };
+  var OCODE = { correct: 'c', wrong: 'w', skip: 's' };
+
+  function resultData(sum) {
+    var tags = {};
+    sum.tags.forEach(function (t) { tags[t.key] = t.count; });
+    return {
+      exam: 'PHYS-ALG-DIAG', version: 3, id: P.makeId(Date.now()), name: student.name,
+      date: new Date().toISOString().replace(/\.\d+Z$/, 'Z'),
+      seconds: Math.round((Date.now() - examStart) / 1000), switches: blurs,
+      band: sum.band.name, avg: Math.round(sum.mean * 100) / 100,
+      topics: sum.chapters.map(function (c) { return [c.level, c.rungs.map(function (r) { return RCODE[r]; }).join('')]; }),
+      sym: [sum.symbolic.right, sum.symbolic.asked], tags: tags,
+      log: log.map(function (r) {
+        var row = [r.id, r.timedOut ? 't' : OCODE[r.outcome], r.seconds, r.answer];
+        if (r.tag) { row.push(r.tag); }
+        return row;
+      })
+    };
+  }
+
+  function showDone() {
+    clear(app);
+    var json = JSON.stringify(resultData(engine.summary()));
+    var e = encodeURIComponent;
+    var gmail = 'https://mail.google.com/mail/?view=cm&fs=1&to=' + e(S.email_to) + '&su=' + e(S.subject_tag + ' ' + student.name) + '&body=' + e(json);
+    var box = el('textarea', { class: 'copybox', readonly: 'readonly', 'aria-label': 'Your results' });
+    box.value = json;
+    var copied = el('span', { class: 'small', 'aria-live': 'polite' });
+    app.appendChild(el('div', { class: 'card' },
+      el('p', { class: 'eyebrow', text: 'Finished' }),
+      el('h1', { text: 'Send your results' }),
+      el('p', { text: 'Copy the text below and send it to Ken, or press Email Ken.' }),
+      box,
+      el('div', { class: 'row', style: 'margin-top:10px' },
+        el('button', { class: 'primary', text: 'Copy', onclick: function () {
+          box.focus(); box.select();
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(json).then(function () { copied.textContent = 'Copied.'; }, function () { copied.textContent = 'Press Ctrl+C (or Cmd+C) to copy.'; });
+          } else { copied.textContent = 'Press Ctrl+C (or Cmd+C) to copy.'; }
+        } }),
+        el('a', { class: 'btn', href: gmail, target: '_blank', rel: 'noopener', text: 'Email Ken' }),
+        copied)));
+    window.scrollTo(0, 0);
+  }
+
+  // ------------------------------------------------------------ teacher view (#report): paste a student's JSON
   var MARK = { pass: '✓', fail: '✗', assumed: '(✓)', numonly: '✓*', none: '·' };
   function ladder(c) { return c.rungs.map(function (r, i) { return (i + 1) + MARK[r]; }).join(' '); }
-  var LEGEND = 'Levels: 1 recall, 2 one-step problem, 3 multi-step problem, 4 challenge. ✓ right, ✗ missed, (✓) counted because you got a harder one right, ✓* right with numbers after missing the letters version, · not asked.';
+  var LEGEND = 'Levels: 1 recall, 2 one-step, 3 multi-step, 4 challenge. ✓ right, ✗ missed, (✓) assumed from a harder right answer, ✓* right with numbers after missing the letters version, · not asked.';
+
+  function fromData(d) {
+    var band = P.BANDS.filter(function (b) { return b.name === d.band; })[0] || P.BANDS[0];
+    var chapters = P.CHAPTERS.map(function (c, i) {
+      var t = (d.topics || [])[i] || [null, '----'];
+      var s = t[0] === null ? { key: 'nt', label: 'Not tested', plan: 'Not reached (question limit): learn this topic from the start' } : P.STATUS[t[0]];
+      var numOnly = t[1].indexOf('n') >= 0;
+      return { n: c[0], title: c[1], level: t[0], key: s.key, label: s.label, numOnly: numOnly,
+               plan: s.plan + (numOnly ? '. Also practise solving its formulas in letters before putting numbers in.' : ''),
+               rungs: t[1].split('').map(function (ch) { return RNAME[ch] || 'none'; }) };
+    });
+    var tags = Object.keys(d.tags || {}).filter(function (k) { return P.TAGS[k]; })
+      .map(function (k) { return { key: k, name: P.TAGS[k].name, say: P.TAGS[k].say, count: d.tags[k] }; })
+      .sort(function (x, y) { return y.count - x.count; });
+    var sym = d.sym || [0, 0];
+    return { band: band, bandIndex: P.BANDS.indexOf(band), mean: d.avg, chapters: chapters, tags: tags,
+             symbolic: { right: sym[0], asked: sym[1], numOnly: chapters.filter(function (c) { return c.numOnly; }).map(function (c) { return c.n; }) } };
+  }
 
   function findings(sum) {
-    var out = [];
-    var sy = sum.symbolic;
+    var out = [], sy = sum.symbolic;
     if (sy.asked) {
-      var line = 'You got ' + sy.right + ' of ' + sy.asked + ' letter (formula) questions right.';
+      var line = sy.right + ' of ' + sy.asked + ' letter (formula) questions right.';
       if (sy.numOnly.length) {
-        out.push({ head: 'Letters vs numbers', text: line + ' In ' + sy.numOnly.map(function (n) { return chTitle[n]; }).join(', ') +
-          ' you solved the problem with numbers but not with letters. The physics is there; the gap is rearranging formulas. Practise solving formulas for a chosen letter before putting numbers in.' });
+        out.push({ head: 'Letters vs numbers', text: line + ' Solved with numbers but not letters in: ' +
+          sy.numOnly.map(function (n) { return chTitle[n]; }).join(', ') + '. The gap is rearranging formulas, not the physics.' });
       } else if (sy.right < sy.asked) {
-        out.push({ head: 'Letters vs numbers', text: line + ' Where you missed a letters question, the numbers version was missed too, so the gap there is the physics itself, not the algebra.' });
+        out.push({ head: 'Letters vs numbers', text: line + ' Each missed letters question was missed with numbers too, so the gap is the physics itself.' });
       } else {
-        out.push({ head: 'Letters vs numbers', text: line + ' Working with formulas in letters is a strength.' });
+        out.push({ head: 'Letters vs numbers', text: line + ' Formulas in letters are a strength.' });
       }
     }
-    sum.tags.forEach(function (t) {
-      out.push({ head: t.name + (t.count > 1 ? ' (' + t.count + ' times)' : ' (once)'), text: t.say });
-    });
-    if (!sum.tags.length) { out.push({ head: 'Slip patterns', text: 'None of your wrong answers matched a common slip (sign, power of ten, factor of 2, squares, upside-down fraction). Misses look like gaps in the topic itself.' }); }
+    sum.tags.forEach(function (t) { out.push({ head: t.name + ' (' + t.count + '×)', text: t.say }); });
+    if (!sum.tags.length) { out.push({ head: 'Slip patterns', text: 'No wrong answer matched a common slip (sign, power of ten, factor of 2, squares, upside-down fraction).' }); }
     return out;
   }
 
-  function textReport(sum) {
-    var secs = Math.round((Date.now() - examStart) / 1000);
-    var out = [S.title, 'Name: ' + student.name, 'Date: ' + fmtDate(new Date()),
-      'Time used: ' + clock(secs) + '   Questions: ' + log.length + '   Window switches: ' + blurs, '',
-      'OVERALL: ' + sum.band.name + ' (average level ' + sum.mean.toFixed(2) + ' of 4)', sum.band.say, '',
-      'WHAT TO WORK ON'];
-    findings(sum).forEach(function (f) { out.push('  - ' + f.head + ': ' + f.text); });
-    out.push('', 'TOPICS  (levels 1 recall, 2 one-step, 3 multi-step, 4 challenge;  ✓ right, ✗ missed, (✓) assumed, ✓* numbers only, · not asked)');
-    sum.chapters.forEach(function (c) {
-      out.push('  ' + pad(c.n) + '  ' + (c.label + '          ').slice(0, 11) + ladder(c) + '   ' + c.title + '  -> ' + c.plan);
-    });
-    out.push('', 'QUESTION LOG (id, what you typed, result, pattern, seconds)');
-    log.forEach(function (r, i) {
-      out.push('  ' + (i + 1) + '. ' + r.id + '  "' + r.answer + '"  ' + r.outcome + (r.timedOut ? ' (timed out)' : '') +
-        (r.tag ? '  [' + P.TAGS[r.tag].name + ']' : '') + '  ' + r.seconds + 's');
-    });
-    return out.join('\n');
+  function keyNode(item) {
+    if (item.type === 'mc') { return el('span', { text: item.opts[0] }); }
+    if (item.type === 'num') { return el('span', { class: 'mono', text: P.fmt(item.ans) + (item.unit ? ' ' + item.unit : '') }); }
+    return el('span', { class: 'math', html: P.renderAst(P.parseExpr(item.key, item.vars).ast) });
   }
 
-  function buildEmail(sum) {
-    var id = P.makeId(Date.now());
-    var clean = function (s, m) { return String(s).replace(/[\r\n\t|;:=]+/g, '_').replace(/\s+/g, ' ').trim().slice(0, m); };
-    var subject = S.subject_tag + ' id=' + id + ' | name=' + clean(student.name, 40) + ' | band=' + sum.band.name + ' | avg=' + sum.mean.toFixed(2);
-    var lines = ['Automatic physics diagnostic results. Please send this email exactly as it is.', 'PHYS-ALG-DIAG v2',
-      'id=' + id, 'name=' + clean(student.name, 60), 'date=' + new Date().toISOString().replace(/\.\d+Z$/, 'Z'),
-      'seconds=' + Math.round((Date.now() - examStart) / 1000), 'questions=' + log.length, 'switches=' + blurs,
-      'band=' + sum.band.name, 'avg=' + sum.mean.toFixed(2),
-      'levels=' + sum.chapters.map(function (c) { return c.level === null ? 'n' : c.level; }).join(','),
-      'sym=' + sum.symbolic.right + '/' + sum.symbolic.asked + ' numonly=' + (sum.symbolic.numOnly.join(',') || '-'),
-      'tags=' + (sum.tags.map(function (t) { return t.key + t.count; }).join(',') || '-'),
-      'log=' + log.map(function (r) {
-        var o = r.outcome === 'correct' ? 'c' : (r.outcome === 'skip' ? (r.timedOut ? 't' : 's') : 'w');
-        return r.id + ':' + o + ':' + r.seconds + (r.tag ? ':' + r.tag : '') + (o === 'w' && r.answer ? ':' + clean(r.answer, 30) : '');
-      }).join(';'), 'END-PHYS-ALG-DIAG'];
-    var body = lines.join('\r\n');
-    var e = encodeURIComponent;
-    return { subject: subject, body: body,
-             gmail: 'https://mail.google.com/mail/?view=cm&fs=1&to=' + e(S.email_to) + '&su=' + e(subject) + '&body=' + e(body + '\r\n\r\n' + textReport(sum)),
-             full: 'To: ' + S.email_to + '\r\nSubject: ' + subject + '\r\n\r\n' + body + '\r\n\r\n' + textReport(sum) };
-  }
-
-  function showReport() {
+  function showViewer() {
     clear(app);
-    var sum = engine.summary();
-    var secs = Math.round((Date.now() - examStart) / 1000);
-    var mail = buildEmail(sum);
-    var copybox = el('textarea', { class: 'copybox', readonly: 'readonly', id: 'results-text', 'aria-label': 'Results text' });
-    copybox.value = mail.full;
-    var copied = el('span', { class: 'small', 'aria-live': 'polite' });
-
+    var input = el('textarea', { class: 'copybox', id: 'paste', 'aria-label': 'Student results JSON', placeholder: '{"exam":"PHYS-ALG-DIAG", ...}' });
+    var err = el('div', { class: 'msg err' });
+    var out = el('div');
     app.appendChild(el('div', { class: 'card' },
-      el('p', { class: 'eyebrow', text: 'Finished · ' + log.length + ' questions in ' + clock(secs) }),
-      el('h1', { text: 'Send your results' }),
-      el('p', { text: 'Click the button below. Gmail opens in a new tab with an email to Ken and your results filled in. Press Send on it.' }),
-      el('div', { class: 'row' },
-        el('a', { class: 'btn primary', href: mail.gmail, target: '_blank', rel: 'noopener', text: 'Open Gmail with the email filled in' }),
-        el('a', { class: 'btn', href: S.skool_dm_url, target: '_blank', rel: 'noopener', text: 'Message Ken on Skool' })),
-      el('h2', { text: 'No Gmail, or it did not open?' }),
-      el('p', { class: 'small', html: 'Copy the results below and send them to <span class="addr">' + S.email_to + '</span> or to Ken in a Skool message.' }),
-      el('div', { class: 'row', style: 'margin-bottom:8px' }, el('button', { text: 'Copy results', onclick: function () {
-        copybox.focus(); copybox.select();
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-          navigator.clipboard.writeText(mail.full).then(function () { copied.textContent = 'Copied.'; }, function () { copied.textContent = 'Press Ctrl+C (or Cmd+C) to copy the selected text.'; });
-        } else { copied.textContent = 'Press Ctrl+C (or Cmd+C) to copy the selected text.'; }
-      } }), copied),
-      copybox));
+      el('p', { class: 'eyebrow', text: 'Teacher view' }),
+      el('h1', { text: 'Read a result' }),
+      el('label', { for: 'paste', text: 'Paste the student\'s results' }), input, err,
+      el('div', { class: 'row' }, el('button', { class: 'primary', text: 'Show report', onclick: function () {
+        var raw = input.value, a = raw.indexOf('{'), b = raw.lastIndexOf('}'), d = null;
+        try { d = JSON.parse(raw.slice(a, b + 1)); } catch (e) { d = null; }
+        if (!d || d.exam !== 'PHYS-ALG-DIAG') { err.textContent = 'That does not look like results from this exam.'; return; }
+        err.textContent = ''; clear(out); out.appendChild(renderReport(d));
+      } }))));
+    app.appendChild(out);
+  }
 
+  function renderReport(d) {
+    var sum = fromData(d);
     var meter = el('div', { class: 'meter' }, P.BANDS.map(function (b, i) { return el('span', { class: i <= sum.bandIndex ? 'on' : '' }); }));
     var meterLabels = el('div', { class: 'meter-labels' }, P.BANDS.map(function (b) { return el('span', { text: b.name }); }));
     var rows = sum.chapters.map(function (c) {
       return el('tr', null, el('td', { class: 'num', text: String(c.n) }), el('td', { text: c.title }),
         el('td', null, chip(c.key, c.label)), el('td', { text: c.plan }), el('td', { class: 'ladder small', text: ladder(c) }));
     });
-    var logRows = log.map(function (r, i) {
-      var item = byId[r.id];
+    var RES = { c: ['right', 'Right'], w: ['wrong', 'Missed'], s: ['skipped', 'Skipped'], t: ['skipped', 'Timed out'] };
+    var logRows = (d.log || []).map(function (r, i) {
+      var item = byId[r[0]];
+      if (!item) { return el('tr', null, el('td', { class: 'num', text: String(i + 1) }), el('td', { colspan: '6', text: 'Unknown question ' + r[0] })); }
+      var res = RES[r[1]] || RES.s;
       return el('tr', null, el('td', { class: 'num', text: String(i + 1) }),
-        el('td', { class: 'small', text: 'Topic ' + r.ch + ', level ' + r.rung + (r.type === 'sym' ? ', letters' : '') }),
-        el('td', { text: item.q }), el('td', { class: 'mono', text: r.answer || '(no answer)' }),
-        el('td', null, chip(r.outcome === 'correct' ? 'right' : (r.outcome === 'skip' ? 'skipped' : 'wrong'),
-          r.outcome === 'correct' ? 'Right' : (r.outcome === 'skip' ? (r.timedOut ? 'Timed out' : 'Skipped') : 'Missed')),
-          r.tag ? el('div', { style: 'margin-top:4px' }, chip('tag', P.TAGS[r.tag].name)) : null),
-        el('td', { class: 'small num', text: r.seconds + 's' }));
+        el('td', { class: 'small', text: item.id + (item.type === 'sym' ? ' (letters)' : '') }),
+        el('td', { text: item.q }), el('td', { class: 'mono', text: r[3] || '—' }), el('td', null, keyNode(item)),
+        el('td', null, chip(res[0], res[1]), r[4] && P.TAGS[r[4]] ? el('div', { style: 'margin-top:4px' }, chip('tag', P.TAGS[r[4]].name)) : null),
+        el('td', { class: 'small num', text: r[2] + 's' }));
     });
-
-    app.appendChild(el('div', { class: 'card' },
-      el('p', { class: 'eyebrow', text: student.name + ' · ' + fmtDate(new Date()) }),
-      el('h1', { text: 'Your results' }),
+    return el('div', { class: 'card' },
+      el('p', { class: 'eyebrow', text: (d.date || '').replace('T', ' ').replace('Z', ' UTC') + ' · id ' + d.id }),
+      el('h1', { text: d.name || '(no name)' }),
+      el('p', { class: 'small', text: 'Time ' + clock(d.seconds || 0) + ' · ' + (d.log || []).length + ' questions · ' + (d.switches || 0) + ' window switches' }),
       el('div', { class: 'band' },
-        el('span', { class: 'small', text: 'Overall level' }),
+        el('span', { class: 'small', text: 'Overall level · average ' + (+d.avg).toFixed(2) + ' of 4' }),
         el('span', { class: 'name', text: sum.band.name }),
-        el('span', { text: sum.band.say }),
-        meter, meterLabels),
+        el('span', { text: sum.band.say }), meter, meterLabels),
       el('h2', { text: 'What to work on' }),
       el('ul', { class: 'findings' }, findings(sum).map(function (f) { return el('li', null, el('b', { text: f.head }), f.text); })),
       el('h2', { text: 'Topics' }),
       el('p', { class: 'small', text: LEGEND }),
       el('div', { class: 'tablewrap' }, el('table', null,
         el('tr', null, ['#', 'Topic', 'Result', 'What to do', 'Levels'].map(function (h) { return el('th', { text: h }); })), rows)),
-      el('h2', { text: 'Your answers' }),
+      el('h2', { text: 'Answers' }),
       el('div', { class: 'tablewrap' }, el('table', null,
-        el('tr', null, ['#', 'Where', 'Question', 'You typed', 'Result', 'Time'].map(function (h) { return el('th', { text: h }); })), logRows))));
-    window.scrollTo(0, 0);
+        el('tr', null, ['#', 'Item', 'Question', 'Typed', 'Correct', 'Result', 'Time'].map(function (h) { return el('th', { text: h }); })), logRows)));
   }
 
-  showStart();
+  if (location.hash === '#report') { showViewer(); } else { showStart(); }
+  window.addEventListener('hashchange', function () { if (location.hash === '#report' && !examActive) { showViewer(); } });
 })();
 </script>
 </body>
